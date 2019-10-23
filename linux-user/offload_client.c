@@ -1918,9 +1918,11 @@ void syscall_daemonize(void)
 		extern void print_syscall(int num,
 				abi_long arg1, abi_long arg2, abi_long arg3,
 				abi_long arg4, abi_long arg5, abi_long arg6);
+#ifdef DQEMU_DEBUG
 		print_syscall(num,
 				arg1, arg2, arg3,
 				arg4, arg5, arg6);
+#endif
 		fprintf(stderr, "[syscall_daemonize]\teabi:%p\n",((CPUARMState *)cpu_env)->eabi);
 		// futex wait
 		/*       int futex(int *uaddr, int futex_op, int val,

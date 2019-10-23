@@ -1390,9 +1390,11 @@ abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
 	extern void print_syscall(int num,
               abi_long arg1, abi_long arg2, abi_long arg3,
               abi_long arg4, abi_long arg5, abi_long arg6);
+#ifdef DQEMU_DEBUG
 	print_syscall(num,
               arg1, arg2, arg3,
               arg4, arg5, arg6);
+#endif
 	
 	char buf[TARGET_PAGE_SIZE*2];
 	char *pp = buf + sizeof(struct tcp_msg_header);

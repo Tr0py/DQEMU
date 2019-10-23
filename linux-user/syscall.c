@@ -6384,7 +6384,6 @@ static void *clone_func_syscall(void *arg)
     CPUArchState *env;
     CPUState *cpu;
     TaskState *ts;
-	fprintf(stderr, "[clone_func_syscall]\tbegin\n");
     rcu_register_thread();
     tcg_register_thread();
 	
@@ -6392,20 +6391,15 @@ static void *clone_func_syscall(void *arg)
     cpu = ENV_GET_CPU(env);
 	
     thread_cpu = cpu;
-	fprintf(stderr, "[clone_func_syscall]\tpoint1\n");
+#ifdef DQEMU_DEBUG
 	fprintf(stderr, "[clone_func_syscall]\tsyscall #%d, thread_cpu: %p\n", offload_client_idx, thread_cpu);
+#endif
     TaskState* new_opaque = (TaskState*)malloc(sizeof(TaskState));
-    fprintf(stderr, "[clone_func_syscall]\tpoint1.1\n");
     *new_opaque = *((TaskState*)cpu->opaque);
-    fprintf(stderr, "[clone_func_syscall]\tpoint1.2\n");
     cpu->opaque = new_opaque;
-    fprintf(stderr, "[clone_func_syscall]\tpoint1.3\n");
     ts = (TaskState *)cpu->opaque;
-    fprintf(stderr, "[clone_func_syscall]\tpoint1.4\n");
     info->tid = gettid();
-    fprintf(stderr, "[clone_func_syscall]\t[task_settid]\n");
     task_settid(ts);
-    fprintf(stderr, "[clone_func_syscall]\ttid: %p\n", info->tid);
     
     if (info->child_tidptr)
         put_user_u32(info->tid, info->child_tidptr);
@@ -6413,9 +6407,7 @@ static void *clone_func_syscall(void *arg)
         put_user_u32(info->tid, info->parent_tidptr);
     /* Enable signals.  */
 
-	fprintf(stderr, "[clone_func_syscall]\t[sigprocmask]\n");
     sigprocmask(SIG_SETMASK, &info->sigmask, NULL);
-	fprintf(stderr, "[clone_func_syscall]\tpoint2\n");
     
     /* Signal to the clone thread that we're ready.  */
     
@@ -6425,7 +6417,6 @@ static void *clone_func_syscall(void *arg)
     //pthread_cond_broadcast(&syscall_clone_cond);
     //pthread_mutex_unlock(&syscall_clone_mutex);
     
-    fprintf(stderr, "[clone_func_syscall]\tpoint2.5\n");
     /* Wait until the parent has finished initializing the tls state.  */
     // !! Try to delete this
     //pthread_mutex_lock(&clone_lock);
@@ -6438,7 +6429,6 @@ static void *clone_func_syscall(void *arg)
     /* Wait until the parent has finished initializing the tls state.  */
     pthread_mutex_lock(&clone_lock);
     pthread_mutex_unlock(&clone_lock);
-    fprintf(stderr, "[clone_func_syscall]\tpoint3\n");
     offload_syscall_daemonize_start(info->env);
     /* never exits */
     return NULL;
@@ -6550,7 +6540,6 @@ static void *clone_func_local(void *arg)
     pthread_mutex_lock(&clone_lock);
     pthread_mutex_unlock(&clone_lock);
 
-    fprintf(stderr, "[clone_func_local]\tguest base %p\n", guest_base);
 
     cpu_loop(env);
     /* never exits */
@@ -7250,8 +7239,10 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
                    abi_ulong parent_tidptr, target_ulong newtls,
                    abi_ulong child_tidptr)
 {
+#ifdef DQEMU_DEBUG
     fprintf(stderr, "[do_fork]\tenv %p flags %p, newsp %p, parent_tidptr %p, newtls %p, child_tidptr %p\n",
                                     env, flags, newsp, parent_tidptr, newtls, child_tidptr);
+#endif
     CPUState *cpu = ENV_GET_CPU(env);
     int ret;
     TaskState *ts;
@@ -7273,23 +7264,31 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
         thread_count++;
         int server_idx = gst_thrd_info[thread_count].server_idx,
             thread_idx = gst_thrd_info[thread_count].thread_idx;
+#ifdef DQEMU_DEBUG
         fprintf(stderr, "[do_fork]\tguest thread %d : %d->%d\n",
                         thread_count, server_idx, thread_idx);
+#endif
         /* Determine to create in local or offload to remote server. */
         if (is_first) {
+#ifdef DQEMU_DEBUG
             fprintf(stderr, "[do_fork]\tCreating syscall thread...\n");
+#endif
             do_fork_syscall(env, flags, newsp, parent_tidptr, 
                                     newtls, child_tidptr);
             is_first = 0;
         }
         if (server_idx == 0) {
+#ifdef DQEMU_DEBUG
             fprintf(stderr, "[do_fork]\tFork in local...\n");
+#endif
             return do_fork_local(env, flags, newsp, parent_tidptr, 
                                     newtls, child_tidptr);
         }
         else if (server_idx > 0) {
+#ifdef DQEMU_DEBUG
             fprintf(stderr, "[do_fork]\tOffload to server #%d\n",
                             server_idx);
+#endif
             offload_send_do_fork_info(server_idx, flags, newsp,
                     parent_tidptr, newtls, child_tidptr);
         }
@@ -8192,12 +8191,9 @@ static inline abi_long host_to_target_stat64(void *cpu_env,
                                              struct stat *host_st)
 {
 #if defined(TARGET_ARM) && defined(TARGET_ABI32)
-    fprintf(stderr, "[DEBUG]\tpoint3-0\n");
-    fprintf(stderr, "[DEBUG]\teabi:%p\n",((CPUARMState *)cpu_env)->eabi);
 
     if (((CPUARMState *)cpu_env)->eabi) {
         struct target_eabi_stat64 *target_st;
-        fprintf(stderr, "[DEBUG]\tpoint3-a\n");
         if (!lock_user_struct(VERIFY_WRITE, target_st, target_addr, 0))
             return -TARGET_EFAULT;
         memset(target_st, 0, sizeof(struct target_eabi_stat64));
@@ -8277,7 +8273,6 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
 {
 	
 	
-	fprintf(stderr, "FUTEXFUTEXFUTEXFUTEXFUTEXFUTEX\n");
     struct timespec ts, *pts;
     int base_op;
 
@@ -8294,7 +8289,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAIT_BITSET:
 		
 		
-		fprintf(stderr, "ffffffffffffffffutex wait uaddr: %x, haddr: %x, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
+	//	fprintf(stderr, "ffffffffffffffffutex wait uaddr: %x, haddr: %x, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
 		//TODO uint32_t should be int
         if (*(uint32_t*)g2h(uaddr) != val)
         {
@@ -8331,7 +8326,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAKE:
 		
 		
-		fprintf(stderr, "ffffffffffffffffutex wake uaddr: %x, haddr: %x, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
+		//fprintf(stderr, "ffffffffffffffffutex wake uaddr: %x, haddr: %x, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
 		
 		//return 0;
 
@@ -8979,7 +8974,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         }
     }
 #endif
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
     gemu_log("DEBUGGING syscall %d\n\n", num);
 #endif
@@ -8987,6 +8982,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     //fprintf(stderr, "[DEBUGsyscall]\tpoint1.5\n");
     if(do_strace)
         print_syscall(num, arg1, arg2, arg3, arg4, arg5, arg6);
+
 	//fprintf(stderr, "[DEBUGsyscall]\tpoint2\n");
 	
 	
@@ -9041,7 +9037,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         cpu_list_unlock();
         ts = cpu->opaque;
         //fprintf(stderr,"[exit]\tNOW child_tidptr: %p\n", ts->child_tidptr);
-        fprintf(stderr,"[exit]\tNOW child_tidptr value: %p\n", *(uint32_t*)g2h(ts->child_tidptr));
+        //fprintf(stderr,"[exit]\tNOW child_tidptr value: %p\n", *(uint32_t*)g2h(ts->child_tidptr));
         if (ts->child_tidptr) {
             
             //*(uint32_t*)(g2h(ts->child_tidptr)) = 0;
@@ -9054,21 +9050,18 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
                         1, 1, 1, 0, 1);
         }
         thread_cpu = NULL;
-        fprintf(stderr,"[exit]\tcpu_list_unlocking\n");
         cpu_list_unlock();
-        fprintf(stderr,"[exit]\tobject_unref\n");
         object_unref(OBJECT(cpu));
-        fprintf(stderr,"[exit]\tg_free\n");
         g_free(ts);
         //fprintf(stderr,"NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
         //rcu_unregister_thread();
         //pthread_exit(NULL);
 
     extern int cas_count;
-    fprintf(stderr, "end::helper_offload_cmpxchg_prelude\tCAS_COUNT: %d\n", cas_count);
+    //fprintf(stderr, "end::helper_offload_cmpxchg_prelude\tCAS_COUNT: %d\n", cas_count);
     extern int ldex_count;
     extern int stex_count;
-    fprintf(stderr, "ldex_count %d, stex_count %d, ratio %f\n", ldex_count, stex_count, (double)stex_count / (double)ldex_count);
+    //fprintf(stderr, "ldex_count %d, stex_count %d, ratio %f\n", ldex_count, stex_count, (double)stex_count / (double)ldex_count);
 
     extern void
     cpu_exit_signal(void);
@@ -11192,10 +11185,10 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_exit_group:
         preexit_cleanup(cpu_env, arg1);
     extern int cas_count;
-    fprintf(stderr, "end::helper_offload_cmpxchg_prelude\tCAS_COUNT: %d\n", cas_count);
+    //fprintf(stderr, "end::helper_offload_cmpxchg_prelude\tCAS_COUNT: %d\n", cas_count);
     extern int ldex_count;
     extern int stex_count;
-    fprintf(stderr, "ldex_count %d, stex_count %d, ratio %f\n", ldex_count, stex_count, (double)stex_count/(double)ldex_count);
+    //fprintf(stderr, "ldex_count %d, stex_count %d, ratio %f\n", ldex_count, stex_count, (double)stex_count/(double)ldex_count);
         ret = get_errno(exit_group(arg1));
         break;
 #endif
