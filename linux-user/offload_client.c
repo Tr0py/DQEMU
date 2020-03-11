@@ -227,7 +227,7 @@ static void show_prefetch_list(int idx);
 
 
 //#define MUTEX_LIST_MAX 32
-#define FUTEX_RECORD_MAX 16
+#define FUTEX_RECORD_MAX 32
 
 //#define FUTEX_RECORD_MAX 32
 

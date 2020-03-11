@@ -1415,12 +1415,12 @@ abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
 	fprintf(stderr, "[pass_syscall]\teabi:%p\n",((CPUARMState *)cpu_env)->eabi);
 	*((int *)pp) = (int) num;
 	pp += sizeof(int);
-	*((uint32_t*)pp) = (uint32_t)(arg1);
-	pp += sizeof(uint32_t);
-	*((uint32_t*)pp) = (uint32_t)(arg2);
-	pp += sizeof(uint32_t);
-	*((uint32_t*)pp) = (uint32_t)(arg3);
-	pp += sizeof(uint32_t);
+	*((abi_long*)pp) = (abi_long)(arg1);
+	pp += sizeof(abi_long);
+	*((abi_long*)pp) = (abi_long)(arg2);
+	pp += sizeof(abi_long);
+	*((abi_long*)pp) = (abi_long)(arg3);
+	pp += sizeof(abi_long);
 	*((abi_long*)pp) = (abi_long)arg4;
 	pp += sizeof(abi_long);
 	*((abi_long*)pp) = (abi_long)arg5;
@@ -1464,6 +1464,7 @@ abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
 	syscall_time_sum += secDiff;
 	fprintf(stderr, "[pass_syscall]\tbegin: %d:%d; end: %d:%d, used: %dms, now total is: %dms", t.time, t.millitm, tend.time, tend.millitm, secDiff, syscall_time_sum);
 	fprintf(stderr, "[pass_syscall]\returning result %p!\n", result);
+	// finally crash here in server
 	return result;
 
 }

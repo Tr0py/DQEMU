@@ -69,6 +69,12 @@
         put_user_u16(__x, (gaddr));                     \
     })
 
+extern int offload_server_idx;
+extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
+                             abi_long arg2, abi_long arg3, abi_long arg4,
+                             abi_long arg5, abi_long arg6, abi_long arg7,
+                             abi_long arg8);
+
 /* AArch64 main loop */
 void cpu_loop(CPUARMState *env)
 {
@@ -76,7 +82,7 @@ void cpu_loop(CPUARMState *env)
     int trapnr, sig;
     abi_long ret;
     target_siginfo_t info;
-
+    int num;
     for (;;) {
         cpu_exec_start(cs);
         trapnr = cpu_exec(cs);
@@ -85,15 +91,35 @@ void cpu_loop(CPUARMState *env)
 
         switch (trapnr) {
         case EXCP_SWI:
-            ret = do_syscall(env,
-                             env->xregs[8],
-                             env->xregs[0],
-                             env->xregs[1],
-                             env->xregs[2],
-                             env->xregs[3],
-                             env->xregs[4],
-                             env->xregs[5],
-                             0, 0);
+            num = env->xregs[8];
+            if ((num == TARGET_NR_write || num == TARGET_NR_read || num == TARGET_NR_openat || num == TARGET_NR_fstat || num == TARGET_NR_close ||
+                 num == TARGET_NR_futex || num == TARGET_NR_clock_gettime || num == TARGET_NR_writev || num == TARGET_NR_brk || num == TARGET_NR_mprotect || num == TARGET_NR_madvise || num == TARGET_NR_mprotect || num == TARGET_NR_munmap || num == TARGET_NR_clone) &&
+                offload_server_idx > 0)
+            {
+                // futex也需要 pass_syscall
+                ret = pass_syscall(env,
+                                   env->xregs[8],
+                                   env->xregs[0],
+                                   env->xregs[1],
+                                   env->xregs[2],
+                                   env->xregs[3],
+                                   env->xregs[4],
+                                   env->xregs[5],
+                                   0, 0);
+            }
+            else
+            {
+                ret = do_syscall(env,
+                                 // ret = pass_syscall(env,
+                                 env->xregs[8],
+                                 env->xregs[0],
+                                 env->xregs[1],
+                                 env->xregs[2],
+                                 env->xregs[3],
+                                 env->xregs[4],
+                                 env->xregs[5],
+                                 0, 0);
+            }
             if (ret == -TARGET_ERESTARTSYS) {
                 env->pc -= 4;
             } else if (ret != -TARGET_QEMU_ESIGRETURN) {
