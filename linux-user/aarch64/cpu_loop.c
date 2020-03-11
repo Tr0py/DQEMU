@@ -82,7 +82,7 @@ void cpu_loop(CPUARMState *env)
     int trapnr, sig;
     abi_long ret;
     target_siginfo_t info;
-    int num;
+    int n;
     for (;;) {
         cpu_exec_start(cs);
         trapnr = cpu_exec(cs);
@@ -91,34 +91,67 @@ void cpu_loop(CPUARMState *env)
 
         switch (trapnr) {
         case EXCP_SWI:
-            num = env->xregs[8];
-            if ((num == TARGET_NR_write || num == TARGET_NR_read || num == TARGET_NR_openat || num == TARGET_NR_fstat || num == TARGET_NR_close ||
-                 num == TARGET_NR_futex || num == TARGET_NR_clock_gettime || num == TARGET_NR_writev || num == TARGET_NR_brk || num == TARGET_NR_mprotect || num == TARGET_NR_madvise || num == TARGET_NR_mprotect || num == TARGET_NR_munmap || num == TARGET_NR_clone) &&
-                offload_server_idx > 0)
+        n = env->xregs[8];
+        if ((n == TARGET_NR_write
+                || n == TARGET_NR_read
+                || n == TARGET_NR_openat
+                || n == TARGET_NR_fstat
+                || n == TARGET_NR_close
+                || n == TARGET_NR_futex
+                || n == TARGET_NR_clock_gettime
+                || n == TARGET_NR_writev
+                || n == TARGET_NR_brk
+                || n == TARGET_NR_mprotect
+                || n == TARGET_NR_madvise
+                || n == TARGET_NR_mprotect
+                || n == TARGET_NR_munmap
+                || n == TARGET_NR_clone
+                //|| (n == TARGET_NR_futex && env->xregs[1] != 128)
+                ) && offload_server_idx>0)
             {
-                // futex也需要 pass_syscall
-                ret = pass_syscall(env,
-                                   env->xregs[8],
-                                   env->xregs[0],
-                                   env->xregs[1],
-                                   env->xregs[2],
-                                   env->xregs[3],
-                                   env->xregs[4],
-                                   env->xregs[5],
-                                   0, 0);
+                if (0&&(n == TARGET_NR_futex)&&
+                    (env->xregs[1]&FUTEX_WAIT == FUTEX_WAIT) && 
+                    (offload_server_idx > 0))// futex wait from server, ignore
+                {
+                    qemu_log("[arm-cpu]\tI am #%ld ignoring..futex\n", offload_server_idx);
+                    ret = 0;
+                    exit(-1);
+                }
+                else
+                {              
+                    qemu_log("[arm-cpu]\tI am #%ld, passing syscall to center...\n", offload_server_idx);
+                    extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
+                                                abi_long arg2, abi_long arg3, abi_long arg4,
+                                                abi_long arg5, abi_long arg6, abi_long arg7,
+                                                abi_long arg8);
+                    ret = (abi_ulong)pass_syscall(env,
+                                                    n,
+                                                    env->xregs[0],
+                                                    env->xregs[1],
+                                                    env->xregs[2],
+                                                    env->xregs[3],
+                                                    env->xregs[4],
+                                                    env->xregs[5],
+                                                    0, 0);
+                    qemu_log("[arm-cpu]\tpass_syscall got ret = %lp\n", ret);
+                }
             }
             else
             {
+                //extern static pthread_mutex_t offload_center_clone_mutex;
+                //pthread_mutex_lock(&offload_center_clone_mutex);
+                //pthread_mutex_unlock(&offload_center_clone_mutex);
                 ret = do_syscall(env,
-                                 // ret = pass_syscall(env,
-                                 env->xregs[8],
-                                 env->xregs[0],
-                                 env->xregs[1],
-                                 env->xregs[2],
-                                 env->xregs[3],
-                                 env->xregs[4],
-                                 env->xregs[5],
-                                 0, 0);
+                                n,
+                                env->xregs[0],
+                                env->xregs[1],
+                                env->xregs[2],
+                                env->xregs[3],
+                                env->xregs[4],
+                                env->xregs[5],
+                                0, 0);
+                qemu_log("[arm-cpu]\tdo_syscall got ret = %lp\n", ret);
+                //assert((unsigned int)ret >= 0xfffff001u);
             }
             if (ret == -TARGET_ERESTARTSYS) {
                 env->pc -= 4;
@@ -165,7 +198,7 @@ void cpu_loop(CPUARMState *env)
             cpu_exec_step_atomic(cs);
             break;
         default:
-            EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%x - aborting\n", trapnr);
+            EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%lx - aborting\n", trapnr);
             abort();
         }
         process_pending_signals(env);

@@ -1783,7 +1783,7 @@ static inline abi_long target_to_host_cmsg(struct msghdr *msgh,
             __get_user(cred->uid, &target_cred->uid);
             __get_user(cred->gid, &target_cred->gid);
         } else {
-            gemu_log("Unsupported ancillary data: %d/%d\n",
+            gemu_log("Unsupported ancillary data: %ld/%ld\n",
                                         cmsg->cmsg_level, cmsg->cmsg_type);
             memcpy(data, target_data, len);
         }
@@ -2005,7 +2005,7 @@ static inline abi_long host_to_target_cmsg(struct target_msghdr *target_msgh,
 
         default:
         unimplemented:
-            gemu_log("Unsupported ancillary data: %d/%d\n",
+            gemu_log("Unsupported ancillary data: %ld/%ld\n",
                                         cmsg->cmsg_level, cmsg->cmsg_type);
             memcpy(target_data, data, MIN(len, tgt_len));
             if (tgt_len > len) {
@@ -2249,7 +2249,7 @@ static abi_long host_to_target_data_bridge_nlattr(struct nlattr *nlattr,
     case QEMU_IFLA_BR_BRIDGE_ID:
         break;
     default:
-        gemu_log("Unknown QEMU_IFLA_BR type %d\n", nlattr->nla_type);
+        gemu_log("Unknown QEMU_IFLA_BR type %ld\n", nlattr->nla_type);
         break;
     }
     return 0;
@@ -2310,7 +2310,7 @@ static abi_long host_to_target_slave_data_bridge_nlattr(struct nlattr *nlattr,
     case QEMU_IFLA_BRPORT_BRIDGE_ID:
         break;
     default:
-        gemu_log("Unknown QEMU_IFLA_BRPORT type %d\n", nlattr->nla_type);
+        gemu_log("Unknown QEMU_IFLA_BRPORT type %ld\n", nlattr->nla_type);
         break;
     }
     return 0;
@@ -2367,7 +2367,7 @@ static abi_long host_to_target_data_linkinfo_nlattr(struct nlattr *nlattr,
         }
         break;
     default:
-        gemu_log("Unknown host QEMU_IFLA_INFO type: %d\n", nlattr->nla_type);
+        gemu_log("Unknown host QEMU_IFLA_INFO type: %ld\n", nlattr->nla_type);
         break;
     }
 
@@ -2389,7 +2389,7 @@ static abi_long host_to_target_data_inet_nlattr(struct nlattr *nlattr,
         }
         break;
     default:
-        gemu_log("Unknown host AF_INET type: %d\n", nlattr->nla_type);
+        gemu_log("Unknown host AF_INET type: %ld\n", nlattr->nla_type);
     }
     return 0;
 }
@@ -2440,7 +2440,7 @@ static abi_long host_to_target_data_inet6_nlattr(struct nlattr *nlattr,
         }
         break;
     default:
-        gemu_log("Unknown host AF_INET6 type: %d\n", nlattr->nla_type);
+        gemu_log("Unknown host AF_INET6 type: %ld\n", nlattr->nla_type);
     }
     return 0;
 }
@@ -2458,7 +2458,7 @@ static abi_long host_to_target_data_spec_nlattr(struct nlattr *nlattr,
                                               NULL,
                                              host_to_target_data_inet6_nlattr);
     default:
-        gemu_log("Unknown host AF_SPEC type: %d\n", nlattr->nla_type);
+        gemu_log("Unknown host AF_SPEC type: %ld\n", nlattr->nla_type);
         break;
     }
     return 0;
@@ -2479,7 +2479,7 @@ static abi_long host_to_target_data_xdp_nlattr(struct nlattr *nlattr,
         *u32 = tswap32(*u32);
         break;
     default:
-        gemu_log("Unknown host XDP type: %d\n", nlattr->nla_type);
+        gemu_log("Unknown host XDP type: %ld\n", nlattr->nla_type);
         break;
     }
     return 0;
@@ -2617,7 +2617,7 @@ static abi_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
                                               NULL,
                                                 host_to_target_data_xdp_nlattr);
     default:
-        gemu_log("Unknown host QEMU_IFLA type: %d\n", rtattr->rta_type);
+        gemu_log("Unknown host QEMU_IFLA type: %ld\n", rtattr->rta_type);
         break;
     }
     return 0;
@@ -2651,7 +2651,7 @@ static abi_long host_to_target_data_addr_rtattr(struct rtattr *rtattr)
         ci->tstamp = tswap32(ci->tstamp);
         break;
     default:
-        gemu_log("Unknown host IFA type: %d\n", rtattr->rta_type);
+        gemu_log("Unknown host IFA type: %ld\n", rtattr->rta_type);
         break;
     }
     return 0;
@@ -2674,7 +2674,7 @@ static abi_long host_to_target_data_route_rtattr(struct rtattr *rtattr)
         *u32 = tswap32(*u32);
         break;
     default:
-        gemu_log("Unknown host RTA type: %d\n", rtattr->rta_type);
+        gemu_log("Unknown host RTA type: %ld\n", rtattr->rta_type);
         break;
     }
     return 0;
@@ -2784,7 +2784,7 @@ static abi_long target_to_host_data_link_rtattr(struct rtattr *rtattr)
 {
     switch (rtattr->rta_type) {
     default:
-        gemu_log("Unknown target QEMU_IFLA type: %d\n", rtattr->rta_type);
+        gemu_log("Unknown target QEMU_IFLA type: %ld\n", rtattr->rta_type);
         break;
     }
     return 0;
@@ -2798,7 +2798,7 @@ static abi_long target_to_host_data_addr_rtattr(struct rtattr *rtattr)
     case IFA_ADDRESS:
         break;
     default:
-        gemu_log("Unknown target IFA type: %d\n", rtattr->rta_type);
+        gemu_log("Unknown target IFA type: %ld\n", rtattr->rta_type);
         break;
     }
     return 0;
@@ -2820,7 +2820,7 @@ static abi_long target_to_host_data_route_rtattr(struct rtattr *rtattr)
         *u32 = tswap32(*u32);
         break;
     default:
-        gemu_log("Unknown target RTA type: %d\n", rtattr->rta_type);
+        gemu_log("Unknown target RTA type: %ld\n", rtattr->rta_type);
         break;
     }
     return 0;
@@ -2905,7 +2905,7 @@ static abi_long host_to_target_data_audit(struct nlmsghdr *nlh)
 {
     switch (nlh->nlmsg_type) {
     default:
-        gemu_log("Unknown host audit message type %d\n",
+        gemu_log("Unknown host audit message type %ld\n",
                  nlh->nlmsg_type);
         return -TARGET_EINVAL;
     }
@@ -2926,7 +2926,7 @@ static abi_long target_to_host_data_audit(struct nlmsghdr *nlh)
     case AUDIT_FIRST_USER_MSG2 ... AUDIT_LAST_USER_MSG2:
         break;
     default:
-        gemu_log("Unknown target audit message type %d\n",
+        gemu_log("Unknown target audit message type %ld\n",
                  nlh->nlmsg_type);
         return -TARGET_EINVAL;
     }
@@ -3263,7 +3263,7 @@ set_timeout:
         break;
     default:
     unimplemented:
-        gemu_log("Unsupported setsockopt level=%d optname=%d\n", level, optname);
+        gemu_log("Unsupported setsockopt level=%ld optname=%ld\n", level, optname);
         ret = -TARGET_ENOPROTOOPT;
     }
     return ret;
@@ -3449,7 +3449,7 @@ static abi_long do_getsockopt(int sockfd, int level, int optname,
         break;
     default:
     unimplemented:
-        gemu_log("getsockopt level=%d optname=%d not yet supported\n",
+        gemu_log("getsockopt level=%ld optname=%ld not yet supported\n",
                  level, optname);
         ret = -TARGET_EOPNOTSUPP;
         break;
@@ -4274,7 +4274,7 @@ static abi_long do_socketcall(int num, abi_ulong vptr)
     case TARGET_SYS_SENDMMSG: /* sockfd, msgvec, vlen, flags */
         return do_sendrecvmmsg(a[0], a[1], a[2], a[3], 1);
     default:
-        gemu_log("Unsupported socketcall: %d\n", num);
+        gemu_log("Unsupported socketcall: %ld\n", num);
         return -TARGET_EINVAL;
     }
 }
@@ -5156,7 +5156,7 @@ static abi_long do_ipc(CPUArchState *cpu_env,
         ret = do_shmctl(first, second, ptr);
         break;
     default:
-	gemu_log("Unsupported ipc call: %d (version %d)\n", call, version);
+	gemu_log("Unsupported ipc call: %ld (version %ld)\n", call, version);
 	ret = -TARGET_ENOSYS;
 	break;
     }
@@ -5840,7 +5840,7 @@ static abi_long do_ioctl(int fd, int cmd, abi_long arg)
         }
         break;
     default:
-        gemu_log("Unsupported ioctl type: cmd=0x%04lx type=%d\n",
+        gemu_log("Unsupported ioctl type: cmd=0x%04lx type=%ld\n",
                  (long)cmd, arg_type[0]);
         ret = -TARGET_ENOSYS;
         break;
@@ -6392,7 +6392,7 @@ static void *clone_func_syscall(void *arg)
     cpu = ENV_GET_CPU(env);
 	
     thread_cpu = cpu;
-	qemu_log("[clone_func_syscall]\tsyscall #%d, thread_cpu: %p\n", offload_client_idx, thread_cpu);
+	qemu_log("[clone_func_syscall]\tsyscall #%ld, thread_cpu: %p\n", offload_client_idx, thread_cpu);
     TaskState* new_opaque = (TaskState*)malloc(sizeof(TaskState));
     *new_opaque = *((TaskState*)cpu->opaque);
     cpu->opaque = new_opaque;
@@ -6459,7 +6459,7 @@ static void *clone_func(void *arg)
 	extern __thread CPUState *thread_cpu;
     thread_cpu = cpu;
 	
-	qemu_log(stderr, "[]client #%d, thread_cpu: %p\n", offload_client_idx, thread_cpu);
+	qemu_log(stderr, "[]client #%ld, thread_cpu: %p\n", offload_client_idx, thread_cpu);
     ts = (TaskState *)cpu->opaque;
     info->tid = gettid();
     task_settid(ts);
@@ -7129,7 +7129,7 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, abi_ulong newsp,
         qemu_log("[do_fork_server_local]\tCreating child!\n");
         ret = pthread_create(&info.thread, &attr, clone_func_server_local, &info);
         //ret = pthread_create(&info.thread, NULL, test, &info);
-        qemu_log("[do_fork_server_local]\tCreating child!%d\n", ret);
+        qemu_log("[do_fork_server_local]\tCreating child!%ld\n", ret);
         //pthread_join(info.thread,NULL);
         /* TODO: Free new CPU state if thread creation failed.  */
 
@@ -7265,7 +7265,7 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
         thread_count++;
         int server_idx = gst_thrd_info[thread_count].server_idx,
             thread_idx = gst_thrd_info[thread_count].thread_idx;
-        qemu_log("[do_fork]\tguest thread %d : %d->%d\n",
+        qemu_log("[do_fork]\tguest thread %ld : %ld->%ld\n",
                         thread_count, server_idx, thread_idx);
         /* Determine to create in local or offload to remote server. */
         if (is_first) {
@@ -7280,7 +7280,7 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
                                     newtls, child_tidptr);
         }
         else if (server_idx > 0) {
-            qemu_log("[do_fork]\tOffload to server #%d\n",
+            qemu_log("[do_fork]\tOffload to server #%ld\n",
                             server_idx);
             offload_send_do_fork_info(server_idx, flags, newsp,
                     parent_tidptr, newtls, child_tidptr);
@@ -7354,14 +7354,14 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
         qemu_log("[do_fork]\tpthread_create\n");
         ret = pthread_create(&info.thread, &attr, clone_func, &info);
         /* TODO: Free new CPU state if thread creation failed.  */
-        qemu_log("[do_fork]\tpthread_create res: %d\n", ret);
+        qemu_log("[do_fork]\tpthread_create res: %ld\n", ret);
         if (is_first)
         {
             pthread_t syscall_init;
             ret = pthread_create(&syscall_init, &attr, clone_func_syscall, 
                                 &info);
             //pthread_join(syscall_init, NULL);
-            qemu_log("[do_fork]\tpthread_create syscall_daemonize res: %d\n", ret);
+            qemu_log("[do_fork]\tpthread_create syscall_daemonize res: %ld\n", ret);
             is_first = 0;
         }
         else {
@@ -7381,7 +7381,7 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
             pthread_cond_wait(&info.cond, &info.mutex);
             ret = info.tid;
         } else {
-            qemu_log("[do_fork]\tErr! ret = %d\n", ret);
+            qemu_log("[do_fork]\tErr! ret = %ld\n", ret);
             ret = -1;
         }
         pthread_mutex_unlock(&info.mutex);
@@ -7935,7 +7935,7 @@ void syscall_init(void)
             TARGET_IOC_SIZEMASK) {
             arg_type = ie->arg_type;
             if (arg_type[0] != TYPE_PTR) {
-                fprintf(stderr, "cannot patch size for ioctl 0x%x\n",
+                fprintf(stderr, "cannot patch size for ioctl 0x%lx\n",
                         ie->target_cmd);
                 exit(1);
             }
@@ -7950,7 +7950,7 @@ void syscall_init(void)
 #if (defined(__i386__) && defined(TARGET_I386) && defined(TARGET_ABI32)) || \
     (defined(__x86_64__) && defined(TARGET_X86_64))
         if (unlikely(ie->target_cmd != ie->host_cmd)) {
-            fprintf(stderr, "ERROR: ioctl(%s): target=0x%x host=0x%x\n",
+            fprintf(stderr, "ERROR: ioctl(%s): target=0x%lx host=0x%lx\n",
                     ie->name, ie->target_cmd, ie->host_cmd);
         }
 #endif
@@ -8285,11 +8285,11 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAIT_BITSET:
 		
 		
-		qemu_log("[futex]futex wait uaddr: %x, haddr: %x, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
+		qemu_log("[futex]futex wait uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
 		//TODO uint32_t should be int
         if (*(uint32_t*)g2h(uaddr) != val)
         {
-            qemu_log("[offload_server_futex]\t[*(uint32_t*)g2h(uaddr) %d == val %d, returning...]\n", *(uint32_t*)g2h(uaddr), val);
+            qemu_log("[offload_server_futex]\t[*(uint32_t*)g2h(uaddr) %ld == val %ld, returning...]\n", *(uint32_t*)g2h(uaddr), val);
             return 0;
         }
         qemu_log("[DEBUG]\tpoint1\n");
@@ -8312,7 +8312,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
             pts = NULL;
         }
         qemu_log("[DEBUG]\tpoint3\n");
-        qemu_log("[futex_wait]\t[timeout:]%d,%d\n", pts->tv_sec, pts->tv_nsec);
+        qemu_log("[futex_wait]\t[timeout:]%ld,%ld\n", pts->tv_sec, pts->tv_nsec);
         return get_errno(safe_futex(g2h(uaddr), op, tswap32(val),
                          pts, NULL, val3));
 						 
@@ -8322,7 +8322,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAKE:
 		
 		
-		qemu_log( "[futex]ffffffffffffffffutex wake uaddr: %x, haddr: %x, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
+		qemu_log( "[futex]ffffffffffffffffutex wake uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
 		
 		//return 0;
 
@@ -8579,7 +8579,7 @@ static int open_self_maps(void *cpu_env, int fd)
         uint64_t min, max, offset;
         char flag_r, flag_w, flag_x, flag_p;
         char path[512] = "";
-        fields = sscanf(line, "%"PRIx64"-%"PRIx64" %c%c%c%c %"PRIx64" %x:%x %d"
+        fields = sscanf(line, "%"PRIx64"-%"PRIx64" %c%c%c%c %"PRIx64" %lx:%lx %ld"
                         " %512s", &min, &max, &flag_r, &flag_w, &flag_x,
                         &flag_p, &offset, &dev_maj, &dev_min, &inode, path);
 
@@ -8596,7 +8596,7 @@ static int open_self_maps(void *cpu_env, int fd)
                 pstrcpy(path, sizeof(path), "      [stack]");
             }
             dprintf(fd, TARGET_ABI_FMT_lx "-" TARGET_ABI_FMT_lx
-                    " %c%c%c%c %08" PRIx64 " %02x:%02x %d %s%s\n",
+                    " %c%c%c%c %08" PRIx64 " %02x:%02x %ld %s%s\n",
                     h2g(min), h2g(max - 1) + 1, flag_r, flag_w,
                     flag_x, flag_p, offset, dev_maj, dev_min, inode,
                     path[0] ? "         " : "", path);
@@ -8684,7 +8684,7 @@ static int is_proc_myself(const char *filename, const char *entry)
             filename += strlen("self/");
         } else if (*filename >= '1' && *filename <= '9') {
             char myself[80];
-            snprintf(myself, sizeof(myself), "%d/", getpid());
+            snprintf(myself, sizeof(myself), "%ld/", getpid());
             if (!strncmp(filename, myself, strlen(myself))) {
                 filename += strlen(myself);
             } else {
@@ -8729,10 +8729,10 @@ static int open_net_route(void *cpu_env, int fd)
         char iface[16];
         uint32_t dest, gw, mask;
         unsigned int flags, refcnt, use, metric, mtu, window, irtt;
-        sscanf(line, "%s\t%08x\t%08x\t%04x\t%d\t%d\t%d\t%08x\t%d\t%u\t%u\n",
+        sscanf(line, "%s\t%08x\t%08x\t%04x\t%ld\t%ld\t%ld\t%08x\t%ld\t%u\t%u\n",
                      iface, &dest, &gw, &flags, &refcnt, &use, &metric,
                      &mask, &mtu, &window, &irtt);
-        dprintf(fd, "%s\t%08x\t%08x\t%04x\t%d\t%d\t%d\t%08x\t%d\t%u\t%u\n",
+        dprintf(fd, "%s\t%08x\t%08x\t%04x\t%ld\t%ld\t%ld\t%08x\t%ld\t%u\t%u\n",
                 iface, tswap32(dest), tswap32(gw), flags, refcnt, use,
                 metric, tswap32(mask), mtu, window, irtt);
     }
@@ -13839,7 +13839,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 
     default:
     unimplemented:
-        qemu_log_mask(LOG_UNIMP, "Unsupported syscall: %d\n", num);
+        qemu_log_mask(LOG_UNIMP, "Unsupported syscall: %ld\n", num);
 #if defined(TARGET_NR_setxattr) || defined(TARGET_NR_get_thread_area) || defined(TARGET_NR_getdomainname) || defined(TARGET_NR_set_robust_list)
     unimplemented_nowarn:
 #endif
