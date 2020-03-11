@@ -28,14 +28,14 @@
 #include "offload_common.h"
 #include <sys/timeb.h>
 #define MAP_PAGE_BITS 12
-void offload_send_page_request_and_wait(uint32_t page_addr, int perm);
+void offload_send_page_request_and_wait(abi_ulong page_addr, int perm);
 void* offload_server_start_thread(void* arg);
 
 /* Wake up main exec thread. */
 extern pthread_mutex_t main_exec_mutex;
 extern pthread_cond_t main_exec_cond;
 extern int main_exec_flag;
-void offload_page_recv_wake_up_thread(uint32_t page_addr, int perm);
+void offload_page_recv_wake_up_thread(abi_ulong page_addr, int perm);
 static void try_recv(int);
 int sktfd;
 int client_socket;
@@ -44,7 +44,7 @@ static char net_buffer[NET_BUFFER_SIZE];
 static pthread_mutex_t socket_mutex;
 #define BUFFER_PAYLOAD_P (net_buffer + TCP_HEADER_SIZE)
 extern CPUArchState *env;
-uint32_t stack_end, stack_start;
+abi_ulong stack_end, stack_start;
 extern pthread_mutex_t cmpxchg_mutex;
 extern __thread int offload_thread_idx;
 int futex_result;
@@ -61,20 +61,20 @@ static void offload_server_process_futex_wait_result(void);
 static void offload_process_fork_info(void);
 static void offload_server_send_futex_wait_request(target_ulong uaddr, int op, int val, target_ulong timeout, target_ulong uaddr2, int val3);
 int offload_server_futex_wait(target_ulong uaddr, int op, int val, target_ulong timeout, target_ulong uaddr2, int val3);
-static void offload_server_send_page_request(target_ulong page_addr, uint32_t perm);
-int offload_segfault_handler_positive(uint32_t page_addr, int perm);
-void offload_server_send_mutex_request(uint32_t mutex_addr, uint32_t, uint32_t);
+static void offload_server_send_page_request(target_ulong page_addr, abi_ulong perm);
+int offload_segfault_handler_positive(abi_ulong page_addr, int perm);
+void offload_server_send_mutex_request(abi_ulong mutex_addr, abi_ulong, abi_ulong);
 static void offload_process_page_request(void);
 static void offload_process_page_content(void);
-static void offload_send_page_content(target_ulong page_addr, uint32_t perm,int);
-static void offload_send_page_ack(target_ulong page_addr, uint32_t perm);
+static void offload_send_page_content(target_ulong page_addr, abi_ulong perm,int);
+static void offload_send_page_ack(target_ulong page_addr, abi_ulong perm);
 int offload_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc);
 static void offload_process_page_perm(void);
 void offload_server_start(void);
 void* offload_center_server_start(void*);
 static void offload_server_process_futex_wake_result(void);
-void offload_server_send_cmpxchg_start(uint32_t, uint32_t, uint32_t);
-void offload_server_send_cmpxchg_end(uint32_t, uint32_t);
+void offload_server_send_cmpxchg_start(abi_ulong, abi_ulong, abi_ulong);
+void offload_server_send_cmpxchg_end(abi_ulong, abi_ulong);
 extern void offload_server_qemu_init(void);
 extern void offload_server_extra_init(void);
 abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
@@ -92,6 +92,6 @@ static void offload_server_process_fs_page(void);
 static void offload_server_process_page_wakeup(void);
 
 PageMapDesc_server page_map_table_s[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section_server"))) __attribute__ ((aligned(4096))) = {0};
-PageMapDesc_server *get_pmd_s(uint32_t page_addr);
+PageMapDesc_server *get_pmd_s(abi_ulong page_addr);
 
 #endif

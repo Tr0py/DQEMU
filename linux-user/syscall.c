@@ -1919,11 +1919,11 @@ static inline abi_long host_to_target_cmsg(struct target_msghdr *target_msgh,
             switch (cmsg->cmsg_type) {
             case IP_TTL:
             {
-                uint32_t *v = (uint32_t *)data;
-                uint32_t *t_int = (uint32_t *)target_data;
+                abi_ulong *v = (abi_ulong *)data;
+                abi_ulong *t_int = (abi_ulong *)target_data;
 
-                if (len != sizeof(uint32_t) ||
-                    tgt_len != sizeof(uint32_t)) {
+                if (len != sizeof(abi_ulong) ||
+                    tgt_len != sizeof(abi_ulong)) {
                     goto unimplemented;
                 }
                 __put_user(*v, t_int);
@@ -1963,11 +1963,11 @@ static inline abi_long host_to_target_cmsg(struct target_msghdr *target_msgh,
             switch (cmsg->cmsg_type) {
             case IPV6_HOPLIMIT:
             {
-                uint32_t *v = (uint32_t *)data;
-                uint32_t *t_int = (uint32_t *)target_data;
+                abi_ulong *v = (abi_ulong *)data;
+                abi_ulong *t_int = (abi_ulong *)target_data;
 
-                if (len != sizeof(uint32_t) ||
-                    tgt_len != sizeof(uint32_t)) {
+                if (len != sizeof(abi_ulong) ||
+                    tgt_len != sizeof(abi_ulong)) {
                     goto unimplemented;
                 }
                 __put_user(*v, t_int);
@@ -2044,7 +2044,7 @@ static abi_long host_to_target_for_each_nlmsg(struct nlmsghdr *nlh,
                                               abi_long (*host_to_target_nlmsg)
                                                        (struct nlmsghdr *))
 {
-    uint32_t nlmsg_len;
+    abi_ulong nlmsg_len;
     abi_long ret;
 
     while (len > sizeof(struct nlmsghdr)) {
@@ -2181,7 +2181,7 @@ static abi_long host_to_target_data_bridge_nlattr(struct nlattr *nlattr,
                                                   void *context)
 {
     uint16_t *u16;
-    uint32_t *u32;
+    abi_ulong *u32;
     uint64_t *u64;
 
     switch (nlattr->nla_type) {
@@ -2216,7 +2216,7 @@ static abi_long host_to_target_data_bridge_nlattr(struct nlattr *nlattr,
         u16 = NLA_DATA(nlattr);
         *u16 = tswap16(*u16);
         break;
-    /* uint32_t */
+    /* abi_ulong */
     case QEMU_IFLA_BR_FORWARD_DELAY:
     case QEMU_IFLA_BR_HELLO_TIME:
     case QEMU_IFLA_BR_MAX_AGE:
@@ -2259,7 +2259,7 @@ static abi_long host_to_target_slave_data_bridge_nlattr(struct nlattr *nlattr,
                                                         void *context)
 {
     uint16_t *u16;
-    uint32_t *u32;
+    abi_ulong *u32;
     uint64_t *u64;
 
     switch (nlattr->nla_type) {
@@ -2377,7 +2377,7 @@ static abi_long host_to_target_data_linkinfo_nlattr(struct nlattr *nlattr,
 static abi_long host_to_target_data_inet_nlattr(struct nlattr *nlattr,
                                                 void *context)
 {
-    uint32_t *u32;
+    abi_ulong *u32;
     int i;
 
     switch (nlattr->nla_type) {
@@ -2397,7 +2397,7 @@ static abi_long host_to_target_data_inet_nlattr(struct nlattr *nlattr,
 static abi_long host_to_target_data_inet6_nlattr(struct nlattr *nlattr,
                                                 void *context)
 {
-    uint32_t *u32;
+    abi_ulong *u32;
     uint64_t *u64;
     struct ifla_cacheinfo *ci;
     int i;
@@ -2409,12 +2409,12 @@ static abi_long host_to_target_data_inet6_nlattr(struct nlattr *nlattr,
     /* uint8_t */
     case QEMU_IFLA_INET6_ADDR_GEN_MODE:
         break;
-    /* uint32_t */
+    /* abi_ulong */
     case QEMU_IFLA_INET6_FLAGS:
         u32 = NLA_DATA(nlattr);
         *u32 = tswap32(*u32);
         break;
-    /* uint32_t[] */
+    /* abi_ulong[] */
     case QEMU_IFLA_INET6_CONF:
         u32 = NLA_DATA(nlattr);
         for (i = 0; i < (nlattr->nla_len - NLA_HDRLEN) / sizeof(*u32);
@@ -2467,13 +2467,13 @@ static abi_long host_to_target_data_spec_nlattr(struct nlattr *nlattr,
 static abi_long host_to_target_data_xdp_nlattr(struct nlattr *nlattr,
                                                void *context)
 {
-    uint32_t *u32;
+    abi_ulong *u32;
 
     switch (nlattr->nla_type) {
     /* uint8_t */
     case QEMU_IFLA_XDP_ATTACHED:
         break;
-    /* uint32_t */
+    /* abi_ulong */
     case QEMU_IFLA_XDP_PROG_ID:
         u32 = NLA_DATA(nlattr);
         *u32 = tswap32(*u32);
@@ -2487,7 +2487,7 @@ static abi_long host_to_target_data_xdp_nlattr(struct nlattr *nlattr,
 
 static abi_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
 {
-    uint32_t *u32;
+    abi_ulong *u32;
     struct rtnl_link_stats *st;
     struct rtnl_link_stats64 *st64;
     struct rtnl_link_ifmap *map;
@@ -2507,7 +2507,7 @@ static abi_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
     case QEMU_IFLA_CARRIER:
     case QEMU_IFLA_PROTO_DOWN:
         break;
-    /* uint32_t */
+    /* abi_ulong */
     case QEMU_IFLA_MTU:
     case QEMU_IFLA_LINK:
     case QEMU_IFLA_WEIGHT:
@@ -2625,7 +2625,7 @@ static abi_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
 
 static abi_long host_to_target_data_addr_rtattr(struct rtattr *rtattr)
 {
-    uint32_t *u32;
+    abi_ulong *u32;
     struct ifa_cacheinfo *ci;
 
     switch (rtattr->rta_type) {
@@ -2659,7 +2659,7 @@ static abi_long host_to_target_data_addr_rtattr(struct rtattr *rtattr)
 
 static abi_long host_to_target_data_route_rtattr(struct rtattr *rtattr)
 {
-    uint32_t *u32;
+    abi_ulong *u32;
     switch (rtattr->rta_type) {
     /* binary: depends on family type */
     case RTA_GATEWAY:
@@ -2681,21 +2681,21 @@ static abi_long host_to_target_data_route_rtattr(struct rtattr *rtattr)
 }
 
 static abi_long host_to_target_link_rtattr(struct rtattr *rtattr,
-                                         uint32_t rtattr_len)
+                                         abi_ulong rtattr_len)
 {
     return host_to_target_for_each_rtattr(rtattr, rtattr_len,
                                           host_to_target_data_link_rtattr);
 }
 
 static abi_long host_to_target_addr_rtattr(struct rtattr *rtattr,
-                                         uint32_t rtattr_len)
+                                         abi_ulong rtattr_len)
 {
     return host_to_target_for_each_rtattr(rtattr, rtattr_len,
                                           host_to_target_data_addr_rtattr);
 }
 
 static abi_long host_to_target_route_rtattr(struct rtattr *rtattr,
-                                         uint32_t rtattr_len)
+                                         abi_ulong rtattr_len)
 {
     return host_to_target_for_each_rtattr(rtattr, rtattr_len,
                                           host_to_target_data_route_rtattr);
@@ -2703,7 +2703,7 @@ static abi_long host_to_target_route_rtattr(struct rtattr *rtattr,
 
 static abi_long host_to_target_data_route(struct nlmsghdr *nlh)
 {
-    uint32_t nlmsg_len;
+    abi_ulong nlmsg_len;
     struct ifinfomsg *ifi;
     struct ifaddrmsg *ifa;
     struct rtmsg *rtm;
@@ -2806,7 +2806,7 @@ static abi_long target_to_host_data_addr_rtattr(struct rtattr *rtattr)
 
 static abi_long target_to_host_data_route_rtattr(struct rtattr *rtattr)
 {
-    uint32_t *u32;
+    abi_ulong *u32;
     switch (rtattr->rta_type) {
     /* binary: depends on family type */
     case RTA_DST:
@@ -2827,21 +2827,21 @@ static abi_long target_to_host_data_route_rtattr(struct rtattr *rtattr)
 }
 
 static void target_to_host_link_rtattr(struct rtattr *rtattr,
-                                       uint32_t rtattr_len)
+                                       abi_ulong rtattr_len)
 {
     target_to_host_for_each_rtattr(rtattr, rtattr_len,
                                    target_to_host_data_link_rtattr);
 }
 
 static void target_to_host_addr_rtattr(struct rtattr *rtattr,
-                                     uint32_t rtattr_len)
+                                     abi_ulong rtattr_len)
 {
     target_to_host_for_each_rtattr(rtattr, rtattr_len,
                                    target_to_host_data_addr_rtattr);
 }
 
 static void target_to_host_route_rtattr(struct rtattr *rtattr,
-                                     uint32_t rtattr_len)
+                                     abi_ulong rtattr_len)
 {
     target_to_host_for_each_rtattr(rtattr, rtattr_len,
                                    target_to_host_data_route_rtattr);
@@ -2951,7 +2951,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
     switch(level) {
     case SOL_TCP:
         /* TCP options all take an 'int' value.  */
-        if (optlen < sizeof(uint32_t))
+        if (optlen < sizeof(abi_ulong))
             return -TARGET_EINVAL;
 
         if (get_user_u32(val, optval_addr))
@@ -2977,7 +2977,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
         case IP_MULTICAST_TTL:
         case IP_MULTICAST_LOOP:
             val = 0;
-            if (optlen >= sizeof(uint32_t)) {
+            if (optlen >= sizeof(abi_ulong)) {
                 if (get_user_u32(val, optval_addr))
                     return -TARGET_EFAULT;
             } else if (optlen >= 1) {
@@ -3027,7 +3027,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
         case IPV6_2292HOPLIMIT:
         case IPV6_CHECKSUM:
             val = 0;
-            if (optlen < sizeof(uint32_t)) {
+            if (optlen < sizeof(abi_ulong)) {
                 return -TARGET_EINVAL;
             }
             if (get_user_u32(val, optval_addr)) {
@@ -3089,7 +3089,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
         case ICMP_FILTER:
         case IPV6_CHECKSUM:
             /* those take an u32 value */
-            if (optlen < sizeof(uint32_t)) {
+            if (optlen < sizeof(abi_ulong)) {
                 return -TARGET_EINVAL;
             }
 
@@ -3254,7 +3254,7 @@ set_timeout:
         default:
             goto unimplemented;
         }
-	if (optlen < sizeof(uint32_t))
+	if (optlen < sizeof(abi_ulong))
             return -TARGET_EINVAL;
 
 	if (get_user_u32(val, optval_addr))
@@ -5224,7 +5224,7 @@ static abi_long do_ioctl_fs_ioc_fiemap(const IOCTLEntry *ie, uint8_t *buf_temp,
     void *argptr, *p;
     abi_long ret;
     int i, extent_size = thunk_type_size(extent_arg_type, 0);
-    uint32_t outbufsz;
+    abi_ulong outbufsz;
     int free_fm = 0;
 
     assert(arg_type[0] == TYPE_PTR);
@@ -5298,7 +5298,7 @@ static abi_long do_ioctl_ifconf(const IOCTLEntry *ie, uint8_t *buf_temp,
     void *argptr;
     int ret;
     struct ifconf *host_ifconf;
-    uint32_t outbufsz;
+    abi_ulong outbufsz;
     const argtype ifreq_arg_type[] = { MK_STRUCT(STRUCT_sockaddr_ifreq) };
     int target_ifreq_size;
     int nb_ifreq;
@@ -5390,7 +5390,7 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
     void *argptr;
     struct dm_ioctl *host_dm;
     abi_long guest_data;
-    uint32_t guest_data_size;
+    abi_ulong guest_data_size;
     int target_size;
     const argtype *arg_type = ie->arg_type;
     abi_long ret;
@@ -5460,7 +5460,7 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
 
         for (i = 0; i < host_dm->target_count; i++) {
             struct dm_target_spec *spec = cur_data;
-            uint32_t next;
+            abi_ulong next;
             int slen;
 
             thunk_convert(spec, gspec, arg_type, THUNK_HOST);
@@ -5501,13 +5501,13 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
         case DM_LIST_DEVICES:
         {
             struct dm_name_list *nl = (void*)host_dm + host_dm->data_start;
-            uint32_t remaining_data = guest_data_size;
+            abi_ulong remaining_data = guest_data_size;
             void *cur_data = argptr;
             const argtype arg_type[] = { MK_STRUCT(STRUCT_dm_name_list) };
             int nl_size = 12; /* can't use thunk_size due to alignment */
 
             while (1) {
-                uint32_t next = nl->next;
+                abi_ulong next = nl->next;
                 if (next) {
                     nl->next = nl_size + (strlen(nl->name) + 1);
                 }
@@ -5536,7 +5536,7 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
             int i;
 
             for (i = 0; i < host_dm->target_count; i++) {
-                uint32_t next = spec->next;
+                abi_ulong next = spec->next;
                 int slen = strlen((char*)&spec[1]) + 1;
                 spec->next = (cur_data - argptr) + spec_size + slen;
                 if (guest_data_size < spec->next) {
@@ -5553,12 +5553,12 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
         case DM_TABLE_DEPS:
         {
             void *hdata = (void*)host_dm + host_dm->data_start;
-            int count = *(uint32_t*)hdata;
+            int count = *(abi_ulong*)hdata;
             uint64_t *hdev = hdata + 8;
             uint64_t *gdev = argptr + 8;
             int i;
 
-            *(uint32_t*)argptr = tswap32(count);
+            *(abi_ulong*)argptr = tswap32(count);
             for (i = 0; i < count; i++) {
                 *gdev = tswap64(*hdev);
                 gdev++;
@@ -5569,13 +5569,13 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
         case DM_LIST_VERSIONS:
         {
             struct dm_target_versions *vers = (void*)host_dm + host_dm->data_start;
-            uint32_t remaining_data = guest_data_size;
+            abi_ulong remaining_data = guest_data_size;
             void *cur_data = argptr;
             const argtype arg_type[] = { MK_STRUCT(STRUCT_dm_target_versions) };
             int vers_size = thunk_type_size(arg_type, 0);
 
             while (1) {
-                uint32_t next = vers->next;
+                abi_ulong next = vers->next;
                 if (next) {
                     vers->next = vers_size + (strlen(vers->name) + 1);
                 }
@@ -6079,7 +6079,7 @@ static abi_long write_ldt(CPUX86State *env,
     struct target_modify_ldt_ldt_s *target_ldt_info;
     int seg_32bit, contents, read_exec_only, limit_in_pages;
     int seg_not_present, useable, lm;
-    uint32_t *lp, entry_1, entry_2;
+    abi_ulong *lp, entry_1, entry_2;
 
     if (bytecount != sizeof(ldt_info))
         return -TARGET_EINVAL;
@@ -6157,7 +6157,7 @@ static abi_long write_ldt(CPUX86State *env,
 
     /* Install the new entry ...  */
 install:
-    lp = (uint32_t *)(ldt_table + (ldt_info.entry_number << 3));
+    lp = (abi_ulong *)(ldt_table + (ldt_info.entry_number << 3));
     lp[0] = tswap32(entry_1);
     lp[1] = tswap32(entry_2);
     return 0;
@@ -6194,7 +6194,7 @@ abi_long do_set_thread_area(CPUX86State *env, abi_ulong ptr)
     struct target_modify_ldt_ldt_s *target_ldt_info;
     int seg_32bit, contents, read_exec_only, limit_in_pages;
     int seg_not_present, useable, lm;
-    uint32_t *lp, entry_1, entry_2;
+    abi_ulong *lp, entry_1, entry_2;
     int i;
 
     lock_user_struct(VERIFY_WRITE, target_ldt_info, ptr, 1);
@@ -6266,7 +6266,7 @@ abi_long do_set_thread_area(CPUX86State *env, abi_ulong ptr)
 
     /* Install the new entry ...  */
 install:
-    lp = (uint32_t *)(gdt_table + ldt_info.entry_number);
+    lp = (abi_ulong *)(gdt_table + ldt_info.entry_number);
     lp[0] = tswap32(entry_1);
     lp[1] = tswap32(entry_2);
     return 0;
@@ -6276,10 +6276,10 @@ static abi_long do_get_thread_area(CPUX86State *env, abi_ulong ptr)
 {
     struct target_modify_ldt_ldt_s *target_ldt_info;
     uint64_t *gdt_table = g2h(env->gdt.base);
-    uint32_t base_addr, limit, flags;
+    abi_ulong base_addr, limit, flags;
     int seg_32bit, contents, read_exec_only, limit_in_pages, idx;
     int seg_not_present, useable, lm;
-    uint32_t *lp, entry_1, entry_2;
+    abi_ulong *lp, entry_1, entry_2;
 
     lock_user_struct(VERIFY_WRITE, target_ldt_info, ptr, 1);
     if (!target_ldt_info)
@@ -6290,7 +6290,7 @@ static abi_long do_get_thread_area(CPUX86State *env, abi_ulong ptr)
         unlock_user_struct(target_ldt_info, ptr, 1);
         return -TARGET_EINVAL;
     }
-    lp = (uint32_t *)(gdt_table + idx);
+    lp = (abi_ulong *)(gdt_table + idx);
     entry_1 = tswap32(lp[0]);
     entry_2 = tswap32(lp[1]);
     
@@ -6366,7 +6366,7 @@ typedef struct {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     pthread_t thread;
-    uint32_t tid;
+    abi_ulong tid;
     abi_ulong child_tidptr;
     abi_ulong parent_tidptr;
     sigset_t sigmask;
@@ -7959,7 +7959,7 @@ void syscall_init(void)
 }
 
 #if TARGET_ABI_BITS == 32
-static inline uint64_t target_offset64(uint32_t word0, uint32_t word1)
+static inline uint64_t target_offset64(abi_ulong word0, abi_ulong word1)
 {
 #ifdef TARGET_WORDS_BIGENDIAN
     return ((uint64_t)word0 << 32) | word1;
@@ -8249,7 +8249,7 @@ static inline abi_long host_to_target_stat64(void *cpu_env,
 #define _GNU_SOURCE       
 #include <unistd.h>
 #include <sys/syscall.h> 
-extern void print_holder(uint32_t page_addr);
+extern void print_holder(abi_ulong page_addr);
 
 extern void offload_client_lock_page(target_ulong addr);
 extern void offload_client_unlock_page(target_ulong addr);
@@ -8285,11 +8285,11 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAIT_BITSET:
 		
 		
-		qemu_log("[futex]futex wait uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
-		//TODO uint32_t should be int
-        if (*(uint32_t*)g2h(uaddr) != val)
+		qemu_log("[futex]futex wait uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(abi_ulong*)g2h(uaddr));
+		//TODO abi_ulong should be int
+        if (*(abi_ulong*)g2h(uaddr) != val)
         {
-            qemu_log("[offload_server_futex]\t[*(uint32_t*)g2h(uaddr) %ld == val %ld, returning...]\n", *(uint32_t*)g2h(uaddr), val);
+            qemu_log("[offload_server_futex]\t[*(abi_ulong*)g2h(uaddr) %ld == val %ld, returning...]\n", *(abi_ulong*)g2h(uaddr), val);
             return 0;
         }
         qemu_log("[DEBUG]\tpoint1\n");
@@ -8297,7 +8297,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
         extern int offload_server_idx;
         if ((offload_mode == 3) && (offload_server_idx == 0))//exec on center
             return offload_server_futex_wait(uaddr, op, val, timeout, uaddr2, val3);
-		//*(uint32_t*)g2h(uaddr) = 0;
+		//*(abi_ulong*)g2h(uaddr) = 0;
 		
 		// if (!timeout)
         // {
@@ -8322,7 +8322,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAKE:
 		
 		
-		qemu_log( "[futex]ffffffffffffffffutex wake uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(uint32_t*)g2h(uaddr));
+		qemu_log( "[futex]ffffffffffffffffutex wake uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(abi_ulong*)g2h(uaddr));
 		
 		//return 0;
 
@@ -8330,7 +8330,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
         {
             qemu_log("[futex_wait]\t[detected pthread_join]\n");
             put_user_u32(0, uaddr);
-            *(uint32_t*)g2h(uaddr) = 0;
+            *(abi_ulong*)g2h(uaddr) = 0;
         }
 		return offload_server_futex_wake(uaddr, op, val, timeout, uaddr2, val3);
         
@@ -8341,7 +8341,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_CMP_REQUEUE:
     case FUTEX_WAKE_OP:
         /* For FUTEX_REQUEUE, FUTEX_CMP_REQUEUE, and FUTEX_WAKE_OP, the
-           TIMEOUT parameter is interpreted as a uint32_t by the kernel.
+           TIMEOUT parameter is interpreted as a abi_ulong by the kernel.
            But the prototype takes a `struct timespec *'; insert casts
            to satisfy the compiler.  We do not need to tswap TIMEOUT
            since it's not compared to guest memory.  */
@@ -8727,7 +8727,7 @@ static int open_net_route(void *cpu_env, int fd)
 
     while ((read = getline(&line, &len, fp)) != -1) {
         char iface[16];
-        uint32_t dest, gw, mask;
+        abi_ulong dest, gw, mask;
         unsigned int flags, refcnt, use, metric, mtu, window, irtt;
         sscanf(line, "%s\t%08x\t%08x\t%04x\t%ld\t%ld\t%ld\t%08x\t%ld\t%u\t%u\n",
                      iface, &dest, &gw, &flags, &refcnt, &use, &metric,
@@ -8854,7 +8854,7 @@ static abi_long host_to_target_data_inotify(void *buf, size_t len)
 {
     struct inotify_event *ev;
     int i;
-    uint32_t name_len;
+    abi_ulong name_len;
 
     for (i = 0; i < len; i += sizeof(struct inotify_event) + name_len) {
         ev = (struct inotify_event *)((char *)buf + i);
@@ -9028,10 +9028,10 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         cpu_list_unlock();
         ts = cpu->opaque;
         //qemu_log("[exit]\tNOW child_tidptr: %p\n", ts->child_tidptr);
-        qemu_log("[exit]\tNOW child_tidptr value: %p\n", *(uint32_t*)g2h(ts->child_tidptr));
+        qemu_log("[exit]\tNOW child_tidptr value: %p\n", *(abi_ulong*)g2h(ts->child_tidptr));
         if (ts->child_tidptr) {
             
-            //*(uint32_t*)(g2h(ts->child_tidptr)) = 0;
+            //*(abi_ulong*)(g2h(ts->child_tidptr)) = 0;
             //put_user_u32(0, ts->child_tidptr);
             extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
                                                         abi_long arg2, abi_long arg3, abi_long arg4,
@@ -9065,7 +9065,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             ret = 0;
         else {
 
-            extern int offload_segfault_handler_positive(uint32_t page_addr, int perm);
+            extern int offload_segfault_handler_positive(abi_ulong page_addr, int perm);
 			offload_segfault_handler_positive(arg2, 2);
             if (!(p = lock_user(VERIFY_WRITE, arg2, arg3, 0)))
                 goto efault;
@@ -12527,7 +12527,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_getgroups32:
         {
             int gidsetsize = arg1;
-            uint32_t *target_grouplist;
+            abi_ulong *target_grouplist;
             gid_t *grouplist;
             int i;
 
@@ -12552,7 +12552,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_setgroups32:
         {
             int gidsetsize = arg1;
-            uint32_t *target_grouplist;
+            abi_ulong *target_grouplist;
             gid_t *grouplist;
             int i;
 
