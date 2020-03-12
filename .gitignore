@@ -15,6 +15,7 @@ accel/tcg/trace.c-timestamp
 accel/tcg/trace.d
 accel/tcg/trace.h
 accel/tcg/trace.h-timestamp
+aarch64-linux-user/
 arm-linux-user-config-devices.mak.d
 arm-linux-user/accel/
 arm-linux-user/config-devices.mak
@@ -879,3 +880,18 @@ compile_commands.json
 *.txt
 core
 a.out
+__data
+__data.__owner
+best_group/
+best_group2/
+env.sh
+thread
+thread.c
+tp/
+arm-linux-user/config-target.mak
+config-host.mak
+config.log
+config.status
+arm-linux-user/
+
+

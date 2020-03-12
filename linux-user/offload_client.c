@@ -1,7 +1,3 @@
-
-
-
-
 #define MAP_PAGE_BITS 12
 // prefetch
 #define MAX_WORKER 16
@@ -423,13 +419,29 @@ void offload_connect_online_server(int idx)
 			ip_addr = "127.0.0.1";
 			break;
 		case 1:
+            ip_addr = "192.168.1.3";
+			//ip_addr = "127.0.0.1";
+			break;
 		case 2:
+            ip_addr = "192.168.1.4";
+			break;
+		case 3:
+            ip_addr = "192.168.1.5";
+			break;
+		case 4:
+            ip_addr = "192.168.1.6";
+			break;
+		case 5:
+            ip_addr = "192.168.1.7";
+			break;
+		case 6:
+            ip_addr = "192.168.1.1";
+			break;
 		default:
 			ip_addr = "10.134.101.9";
 			break;
 	}
 	ip_addr = "127.0.0.1";
-
 	//检索服务器的ip地址
 	unsigned long dst_ip;
 	fprintf(stderr,"ip_addr: %s\n", ip_addr);
@@ -437,7 +449,7 @@ void offload_connect_online_server(int idx)
 		struct hostent *he;  //主机信息
 
 		if((he=gethostbyname(ip_addr))==NULL){
-		fprintf(stderr,"gethostbyname error\n");
+        perror("gethostbyname");
 		exit(-2);
 		}
 		fprintf(stderr, "[offload_connect_online_server]\tgot host name %s, h_addrtype %d, h_addr: %p\n", he->h_name, he->h_addrtype, he->h_addr);
@@ -455,8 +467,8 @@ void offload_connect_online_server(int idx)
 						, server_port_of(idx));
 		if (connect(skt[idx],(struct sockaddr*) &server_addr, struct_len) == -1)
 		{
-			fprintf(stderr, "[offload_connect_online_server]\tconnect port# %d failed, errno: %d\n"
-							, server_port_of(idx), errno);
+			printf("[offload_connect_online_server]\tconnect %s port# %d failed, errno: %d\n"
+							, ip_addr, server_port_of(idx), errno);
 			perror("connect");
 			exit(1);
 		}
@@ -665,7 +677,7 @@ static void dump_code(void)
 	int tmp[1];
 	cpu_memory_rw_debug(ENV_GET_CPU(client_env), 0x10324, tmp, 4, 1);
 	//fprintf(stderr, "[dump_code]\t0x10324 is at host %x. = %x = %x\n", g2h(0x10324), *((uint32_t *) g2h(0x10324)), tmp[0]);
-	target_disas(stderr, ENV_GET_CPU(client_env), client_env->regs[15], 10);
+	//target_disas(stderr, ENV_GET_CPU(client_env), client_env->regs[15], 10);
 	// why segmentation fault???????????????
 	//mprotect(g2h(binary_start_address), (unsigned int)binary_end_address - binary_start_address, PROT_READ);
 	memcpy((void *)p, (void *)(g2h(binary_start_address )), (unsigned int)binary_end_address - binary_start_address);
@@ -1129,6 +1141,7 @@ static cas_record* cas_list_add_record(uint32_t cas_addr, uint32_t cas_val)
  * return 1 if it is a valid request and no one's using the cas -- it is good to go
  * else return 0
  */ 
+int good_to_go=0;
 static int cas_list_add_request(cas_record *record, int idx, uint32_t cmpv, uint32_t newv, uint32_t strv, int thread_idx)
 {
 	fprintf(stderr, "[cas_list_add_request]\tnew request cas_addr %p, idx %d->%d, cmpv %x, newv %x, strv %x\n"
@@ -1164,7 +1177,7 @@ static int cas_list_add_request(cas_record *record, int idx, uint32_t cmpv, uint
 		 * succeeds later.
 		 */
 	}
-	int good_to_go = 0;
+	good_to_go = 0;
 	/* Is it a valid request in proper time? */
 	if ((record->user == -1) && (cmpv == record->cas_value)) {
 		fprintf(stderr, "[cas_list_add_request]\tyou are good to go!\n");
@@ -1190,10 +1203,11 @@ static void offload_process_mutex_request(void)
 	p += sizeof(uint32_t);
 	int thread_idx = *(int *)p;
 	p += sizeof(int);
-	offload_segfault_handler_positive(cas_addr, 2);
+	offload_segfault_handler_positive(cas_addr, 1);
 	int strv = *(int*)g2h(cas_addr);
-	fprintf(stderr, "[offload_process_mutex_request client#%d]\trequested mutex address: %p from %d, cmpv %x, newv %x, strv %x from %d->%d\n", 
+	printf( "[offload_process_mutex_request client#%d]\trequested mutex address: %p from %d, cmpv %x, newv %x, strv %x from %d->%d\n", 
 					offload_client_idx, cas_addr, requestorId, cmpv, newv, strv, offload_client_idx, thread_idx);
+//#ifdef Jan22
 	pthread_mutex_lock(&g_cas_mutex);
 	show_cas_list();
 	cas_record *record = cas_list_lookup(cas_addr);
@@ -1205,7 +1219,8 @@ static void offload_process_mutex_request(void)
 	}
 	int good_to_go = cas_list_add_request(record, requestorId, cmpv, newv, strv, thread_idx);
 	show_cas_list();
-	if (good_to_go == 1) {
+//#endif
+	if (good_to_go == 1||1) {
 		record->user = requestorId;
 		record->user_thread_idx = thread_idx;
 		offload_send_mutex_verified(requestorId, thread_idx);
@@ -1466,7 +1481,7 @@ void* offload_client_daemonize(void)
 			struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)net_buffer;
 			if (tcp_header->magic_nr!=COMM_MAGIC_NR)
 			{
-				fprintf(stderr, "[offload_client_daemonize]\ttcp_header->magic_nr == %p??\n", tcp_header->magic_nr);
+				printf( "[offload_client_daemonize]\ttcp_header->magic_nr == %p??\n", tcp_header->magic_nr);
 				exit(3);
 			}
 			switch (tcp_header->tag)
@@ -1516,7 +1531,7 @@ void* offload_client_daemonize(void)
 					break;
 
 				default:
-					fprintf(stderr, "[offload_client_daemonize]\tunknown tag:%d\n", tcp_header->tag);
+					printf( "[offload_client_daemonize]\tunknown tag:%d\n", tcp_header->tag);
 					exit(0);
 					break;
 
@@ -1588,7 +1603,7 @@ static void futex_table_add(uint32_t futex_addr, int idx, int thread_id)
 			i++;
 			if (i == FUTEX_RECORD_MAX)
 			{
-				fprintf(stderr, "[futex_table_add]\tFatal error: futex_table full! Please add more space.\n");
+				printf( "[futex_table_add]\tFatal error: futex_table full! Please add more space.\n");
 				exit(232);
 			}
 		}
@@ -1682,7 +1697,7 @@ static struct futex_record *futex_table_create_empty_record(uint32_t futex_addr)
 	while (futex_table[i].isInUse) {
 		i++;
 		if (i == FUTEX_RECORD_MAX) {
-			fprintf(stderr, "[futex_table_create_empty_record]\tFATAL ERR: FUTEX TABLE FULL!\n");
+			printf( "[futex_table_create_empty_record]\tFATAL ERR: FUTEX TABLE FULL!\n");
 			exit(213);
 		}
 	}
@@ -1701,7 +1716,8 @@ static void futex_table_wake(uint32_t futex_addr, int num, int idx, int thread_i
 	struct futex_record *pr = futex_table_find(futex_addr);
 	if (!pr) {
 		offload_send_syscall_result(idx, 0, thread_id);
-		return;
+		fprintf(stderr, "table element not found\n");
+        return;
 	}
 	// wake up all servers
 	struct Node *pnode = pr->head, *tmp;
@@ -1730,7 +1746,8 @@ static void futex_table_wake(uint32_t futex_addr, int num, int idx, int thread_i
 		pr->futex_addr = 0;
 		pr->head = NULL;
 	}
-	print_futex_table();
+    if(do_strace)
+	    print_futex_table();
 	offload_send_syscall_result(idx, count, thread_id);
 }
 
@@ -1858,7 +1875,7 @@ int futex_table_cmp_requeue(uint32_t uaddr, int futex_op, int val, uint32_t val2
 				pr->head = NULL;
 			}
 			else {
-				fprintf(stderr, "[futex_table_cmp_requeue]\tcleaning uaddr1..., I am not sure what to do..about val2\n", uaddr2);
+				printf( "[futex_table_cmp_requeue]\tcleaning uaddr1..., I am not sure what to do..about val2\n", uaddr2);
 				exit(132);
 				pr->head = end->next;
 			}
@@ -1948,9 +1965,11 @@ void syscall_daemonize(void)
 		extern void print_syscall(int num,
 				abi_long arg1, abi_long arg2, abi_long arg3,
 				abi_long arg4, abi_long arg5, abi_long arg6);
-		print_syscall(num,
-				arg1, arg2, arg3,
-				arg4, arg5, arg6);
+        if(do_strace) {
+		    print_syscall(num,
+		    		arg1, arg2, arg3,
+		    		arg4, arg5, arg6);
+        }
 		fprintf(stderr, "[syscall_daemonize]\teabi:%p\n",((CPUARMState *)cpu_env)->eabi);
 		// futex wait
 		/*       int futex(int *uaddr, int futex_op, int val,
@@ -1984,6 +2003,8 @@ void syscall_daemonize(void)
 
               The arguments uaddr2 and val3 are ignored.
 		*/
+        if(num == TARGET_NR_futex && arg2 == 64)
+            fprintf(stderr, "op == 64\n");
 		if ((num == TARGET_NR_futex)
 			&& ((arg2 == (FUTEX_PRIVATE_FLAG|FUTEX_WAIT)) || (arg2 == FUTEX_WAIT)))
 		{
@@ -2001,7 +2022,7 @@ void syscall_daemonize(void)
 				// offload_send_syscall_result(idx, 0);
 				// TODO implement time wait
 				if (arg4 != NULL) {
-					fprintf(stderr, "[syscall_daemonize]\ttime FUTEX_WAIT not implemented!\n");
+					printf("[syscall_daemonize]\ttime FUTEX_WAIT not implemented!\n");
 					exit(122);
 				}
 			}
@@ -2080,7 +2101,7 @@ void syscall_daemonize(void)
 				*(int *)(g2h(futex_addr2)) ^= oparg;
 				break;
 			default:
-				fprintf(stderr, "futex_wake_op_op error! ");
+				printf( "futex_wake_op_op error! ");
 				exit(122);
 				break;
 			}
@@ -2115,7 +2136,7 @@ void syscall_daemonize(void)
 					futex_table_wake(futex_addr2, val2, idx, thread_id);
 				break;
 			default:
-				fprintf(stderr, "futex_wake_op_cmp error! ");
+				printf("futex_wake_op_cmp error! ");
 				exit(122);
 				break;
 			}
@@ -2272,12 +2293,12 @@ static void offload_send_page_request(int idx, target_ulong page_addr, uint32_t 
 	int res = autoSend(idx, net_buffer, p - net_buffer, 0);
 	if (res < 0)
 	{
-		fprintf(stderr, "[offload_send_page_request]\tpage request %x sending to %d failed\n", g2h(page_addr), idx);
+		printf( "[offload_send_page_request]\tpage request %x sending to %d failed\n", g2h(page_addr), idx);
 		exit(0);
 	}
 	else if (res != p - net_buffer)
 	{
-		fprintf(stderr, "[offload_send_page_request]\tsent page %x request shorter than expected, %d of %d\n", page_addr, res, p - net_buffer);
+		printf( "[offload_send_page_request]\tsent page %x request shorter than expected, %d of %d\n", page_addr, res, p - net_buffer);
 		exit(0);
 	}
 	fprintf(stderr, "[offload_send_page_request]\tsent page %x request to node# %d, perm: %d, packet#%d\n", page_addr, idx, perm, get_number());
@@ -2478,7 +2499,7 @@ static void offload_send_page_perm(int idx, target_ulong page_addr, int perm)
 	int res = autoSend(idx, net_buffer, p - net_buffer, 0);
 	if (res < 0)
 	{
-		fprintf(stderr, "[offload_send_page_perm]\tpage %x perm to %d sent failed res: %d errno: %d\n", page_addr, idx, res, errno);
+		printf( "[offload_send_page_perm]\tpage %x perm to %d sent failed res: %d errno: %d\n", page_addr, idx, res, errno);
 		exit(0);
 	}
 
@@ -2506,10 +2527,7 @@ static void offload_process_page_content(void)
 	int requestor_idx = pmd->requestor;
 
 	fprintf(stderr, "[offload_process_page_content]\tpage %x, perm %d, for #%d, actually forwho:%d\n", page_addr, perm, requestor_idx, forwho);
-	if (forwho != requestor_idx)
-	{
-		exit(0);
-	}
+	assert(forwho == requestor_idx);
 	if (perm == 2)
 	{
 		if (pmd->invalid_count - 1 <= 0)
@@ -2523,7 +2541,7 @@ static void offload_process_page_content(void)
 				pmd->invalid_count--;
 				if (pmd->invalid_count<0)
 				{
-					fprintf(stderr, "[offload_process_page_content]\tWTHE HELL IS happening??invalid_cound = %d\n", pmd->invalid_count);
+					printf( "[offload_process_page_content]\tWTHE HELL IS happening??invalid_cound = %d\n", pmd->invalid_count);
 					exit(-2);
 				}
 				offload_send_page_content(requestor_idx, page_addr, perm, p);
@@ -2532,7 +2550,7 @@ static void offload_process_page_content(void)
 
 			else if (requestor_idx == -1)
 			{
-				fprintf(stderr, "[offload_process_page_content]\tWTHE HELL IS happening??\n", page_addr, perm);
+				printf( "[offload_process_page_content]\tWTHE HELL IS happening??\n", page_addr, perm);
 				exit(123);
 			}
 		}
@@ -2860,7 +2878,7 @@ void offload_master_send_page(uint32_t page_addr, int perm, int idx)
 	int res = autoSend(idx, buf, p - buf, 0);
 	if (res < 0)
 	{
-		fprintf(stderr, "[offload_master_send_page]\tsent page %x content failed\n", page_addr);
+		printf( "[offload_master_send_page]\tsent page %x content failed\n", page_addr);
 		exit(0);
 	}
 	fprintf(stderr, "[offload_master_send_page]\tsent page %x content, perm%d, packet#%d\n", page_addr, perm, get_number());
