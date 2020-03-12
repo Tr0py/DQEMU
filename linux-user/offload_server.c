@@ -198,6 +198,7 @@ static void load_cpu(void)
 	fprintf(stderr, "[load_cpu]\tr0: %ld\n", thread_env->regs[0]);
 }
 
+// dump memory_region
 static void load_memory_region(void)
 {
 	// map the memory region:
@@ -205,19 +206,13 @@ static void load_memory_region(void)
 	
 	abi_ulong num = *(abi_ulong *)p;
     p += sizeof(abi_ulong);
-	
-	
 	fprintf(stderr, "[load_memory_region]\tmemory region of 0%ld\n", num);
-	
-	
-	
     if (num != 0) 
 	{
         target_ulong heap_end = *(target_ulong *)p;
         p += sizeof(target_ulong);
 
         /* initialize heap end */
-		
         target_set_brk(heap_end);
 		
         stack_start = *(target_ulong *)p;
@@ -261,6 +256,7 @@ static void load_memory_region(void)
 	first = 0;
 }
 
+//dump brk
 static void load_brk(void)
 {
 	// copy the brk
@@ -1065,10 +1061,11 @@ static void offload_server_daemonize(void)
 {
 	fprintf(stderr, "[offload_server_daemonize]\tstart to daemonize\n");
 	
-	//fprintf(stderr, ">>>>>>>>>>>> server# %ld guest_base: %lx\n", offload_server_idx, guest_base);
+	fprintf(stderr, ">>>>>>>>>>>> server# %ld guest_base: %lx\n", offload_server_idx, guest_base);
 	struct sockaddr_in client_addr;
 	socklen_t client_addr_size = sizeof(client_addr);
 	client_socket = accept(sktfd, (struct sockaddr*)&client_addr, &client_addr_size);
+	fprintf(stderr, "need to be awaked?\n");
 	int flag = 1;
 	int result = setsockopt(client_socket,            /* socket affected */
                         IPPROTO_TCP,     /* set option at TCP level */
@@ -1079,6 +1076,7 @@ static void offload_server_daemonize(void)
 		perror("setsockopt");
 		exit(3);
 	}
+	// 这里需要唤醒吗
 	while (1)
 	{
 		

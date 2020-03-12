@@ -62,7 +62,7 @@ extern __thread int offload_mode; /* 1: server, 2: client  3: exec*/
 extern void exec_func(void);
 static void handler_arg_nodenumber(const char * arg);
 static void handler_arg_threadgroup(const char*);
-
+extern void offload_connect_online_server(int idx);
 
 
 /*
@@ -417,11 +417,11 @@ static void handle_arg_nodenumber(const char *arg)
 {
     nodes = atoi(arg);
 }
-#define GUEST_THREAD_MAX 128
+#define GUEST_THREAD_MAX 1024
 int gst_thrd_plc[GUEST_THREAD_MAX] = //{0,0,1,1,2,2,3,3,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
             //{0,1,2,3,4,5,6,7,8,9,10,11};
 {
-
+    0
 };
 gst_thrd_info_t gst_thrd_info[GUEST_THREAD_MAX];
 int group = 1;
@@ -1225,9 +1225,9 @@ int main(int argc, char **argv, char **envp)
         pthread_mutex_unlock(&offload_center_init_mutex);
         fprintf(stderr, "Connecting online server from 1 to %d\n", max_server_in_use);
         for (int i = 1; i <= max_server_in_use; i++) {
-            extern void offload_connect_online_server(int idx);
+            fprintf(stderr, "Connecting to idx %i\n", i);
             offload_connect_online_server(i);
-        
+
         }
     }
     if (offload_mode == 1)

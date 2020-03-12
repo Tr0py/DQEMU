@@ -398,6 +398,7 @@ extern void offload_server_qemu_init(void);
 /* Connect the target server. */
 void offload_connect_online_server(int idx)
 {
+	fprintf(stderr, "checkpiont 1\n");
 	skt[idx] = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	int flag = 1;
 	int result = setsockopt(skt[idx],            /* socket affected */
@@ -409,9 +410,11 @@ void offload_connect_online_server(int idx)
 		perror("setsockopt");
 		exit(3);
 	}
+	//为什么连不上server1 
 	struct sockaddr_in server_addr, client_addr;
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(server_port_of(idx));
+	fprintf(stderr, "checkpiont 2\n");
 	char* ip_addr;
 	switch (idx)
 	{
@@ -444,7 +447,7 @@ void offload_connect_online_server(int idx)
 	ip_addr = "127.0.0.1";
 	//检索服务器的ip地址
 	unsigned long dst_ip;
-	fprintf(stderr,"ip_addr: %s\n", ip_addr);
+	fprintf(stderr,"ip_addr: %s port : %d \n", ip_addr, server_port_of(idx));
 	if((dst_ip=inet_addr(ip_addr))){
 		struct hostent *he;  //主机信息
 
@@ -463,15 +466,15 @@ void offload_connect_online_server(int idx)
 	//static int ncount = 0;
 	//if (ncount < 2) {
 		//fprintf(stderr, "[client]\toffload index: %ld\n", idx);
-		fprintf(stderr, "[offload_connect_online_server]\tconnecting to server, port# %ld\n"
-						, server_port_of(idx));
-		if (connect(skt[idx],(struct sockaddr*) &server_addr, struct_len) == -1)
-		{
-			printf("[offload_connect_online_server]\tconnect %s port# %ld failed, errno: %ld\n"
-							, ip_addr, server_port_of(idx), errno);
-			perror("connect");
-			exit(1);
-		}
+	fprintf(stderr, "[offload_connect_online_server]\tconnecting to server, port# %ld\n"
+					, server_port_of(idx));
+	if (connect(skt[idx],(struct sockaddr*) &server_addr, struct_len) < 0)
+	{
+		printf("[offload_connect_online_server]\tconnect %s port# %ld failed, errno: %ld\n"
+						, ip_addr, server_port_of(idx), errno);
+		perror("connect");
+		exit(1);
+	}
 	//	ncount ++;
 	//}
 
@@ -513,9 +516,10 @@ void close_network(void)
 	close(skt[offload_client_idx]);
 }
 
+//how to fix ?
 static int dump_self_maps(void)
 {
-
+	// p = 头部加CPU信息和task信息
 	CPUState *cpu = ENV_GET_CPU((CPUArchState *)client_env);
 	TaskState *ts = cpu->opaque;
 	FILE *fp;
@@ -530,6 +534,7 @@ static int dump_self_maps(void)
 	int line_count = 0;
 	// static int has_read = 0;
 	int num = 0;
+	// 话说这里p不是空的吗？
 	abi_ulong *p_num = (abi_ulong *)p;
 	p += sizeof(abi_ulong);
 	// heap_end
@@ -539,19 +544,17 @@ static int dump_self_maps(void)
 	p += sizeof(abi_ulong);
 	abi_ulong *p_stack_end = (abi_ulong *)p;
 	p += sizeof(abi_ulong);
-
+	fprintf(stderr, "p_num: %ld, target_brk: %ld, stack_start: %ld, stack_end: %ld\n");
 	while ((read = getline(&line, &len, fp)) != -1) {
-
 		int fields, dev_maj, dev_min, inode;
 		uint64_t min, max, offset;
 		char flag_r, flag_w, flag_x, flag_p;
 		char path[512] = "";
-		fields = sscanf(line, "%"PRIx64"-%"PRIx64" %c%c%c%c %"PRIx64" %lx:%lx %ld"
+		fields = sscanf(line, "%"PRIx64"-%"PRIx64" %c%c%c%c %"PRIx64" %x:%x %d"
 						" %512s", &min, &max, &flag_r, &flag_w, &flag_x,
 						&flag_p, &offset, &dev_maj, &dev_min, &inode, path);
 
 		line_count ++;
-
 		//printf("#%ld: %s", line_count, line);
 		if ((fields < 10) || (fields > 11)) {
 			continue;
@@ -622,12 +625,12 @@ static int dump_self_maps(void)
 			*(abi_ulong *)p = (abi_ulong)(end - start);
 			p += sizeof(abi_ulong);
 
-
+			fprintf(stderr, "%d\n", num);
 			num++;
 		}
 	}
 
-
+	fprintf(stderr, "dump map success!\n");
 	*((abi_ulong *) p_num) = num;
 
 
@@ -698,6 +701,7 @@ static void offload_send_extra_start(int idx)
 
 }
 /* Dump the informations and send to slave QEMU. */
+//这里需要修改
 static void offload_send_start(int first)
 {
 	fprintf(stderr, "[client]\tsending offload start request\n");
@@ -719,7 +723,6 @@ static void offload_send_start(int first)
 	fprintf(stderr, "[client]\tPC: %ld\n", client_env->regs[15]);
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *) net_buffer;
 	fill_tcp_header(tcp_header, p - net_buffer - sizeof(struct tcp_msg_header), TAG_OFFLOAD_START);
-	fprintf(stderr, "sending buffer len without header: %lx\n", p - net_buffer - sizeof(struct tcp_msg_header));
 	fprintf(stderr, "sending buffer len: %ld\n", p - net_buffer);
 	if (offload_client_idx != 1 && 0) {
 		res = autoSend(1, net_buffer, (p - net_buffer), 0);
@@ -730,7 +733,7 @@ static void offload_send_start(int first)
 	fprintf(stderr, "[send]\tsent %ld bytes\n", res);
 }
 
-static int autoSend(int idx,char* buf, int length, int flag)
+static int autoSend(int idx, char* buf, int length, int flag)
 {
 	int Fd = skt[idx];
 	char* ptr = buf;
@@ -2223,6 +2226,7 @@ int offload_client_start(CPUArchState *the_env)
 	else {
 		offload_send_start(0);
 	}
+	//client 初始化结束
 	fprintf(stderr, "[offload_client_start]\tSent. returning..\n");
 	return (thread_idx == 0) ? 0 : 1;
 }
