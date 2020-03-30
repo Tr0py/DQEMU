@@ -417,7 +417,7 @@ static void handle_arg_nodenumber(const char *arg)
 {
     nodes = atoi(arg);
 }
-#define GUEST_THREAD_MAX 1024
+#define GUEST_THREAD_MAX 128
 int gst_thrd_plc[GUEST_THREAD_MAX] = //{0,0,1,1,2,2,3,3,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
             //{0,1,2,3,4,5,6,7,8,9,10,11};
 {
@@ -1212,7 +1212,7 @@ int main(int argc, char **argv, char **envp)
         /*CPUArchState new_env;
         offload_get_new_thread_info(env, &new_env);*/
         //pthread_mutex_init(&offload_center_clone_mutex, NULL);
-
+        // guest_base = 0x3c00f000;
 
         pthread_mutex_init(&offload_center_init_mutex, NULL);
         pthread_mutex_init(&master_mprotect_mutex, NULL);

@@ -138,7 +138,6 @@ static void load_cpu(void)
 {
 	// copy the CPU struct
 	
-	static int count_n = 0;
 
 	//memcpy(thread_env, p, sizeof(CPUARMState));
 	extern CPUArchState *env_bak;
@@ -221,7 +220,7 @@ static void load_memory_region(void)
         stack_end = *(target_ulong *)p;
         p += sizeof(target_ulong);
     }
-	static int mapped[50] = {0}, mapped_count = 0, first = 1;
+	static abi_ulong mapped[50] = {0}, mapped_count = 0, first = 1;
 	int mapped_flag = 0;
 	for (abi_ulong i = 0; i < num; i++) 
 	{
@@ -247,7 +246,7 @@ static void load_memory_region(void)
 		fprintf(stderr, "[load_memory_region]\tmemory region: %lx to %lx,  host: %lx to %lx\n", addr, addr + len, g2h(addr), g2h(addr) + len);
 		mapped[mapped_count++] = addr;
 
-		int ret = target_mmap(addr, page_num * TARGET_PAGE_SIZE, PROT_NONE,
+		abi_ulong ret = target_mmap(addr, page_num * TARGET_PAGE_SIZE, PROT_NONE,
 							MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 		fprintf(stderr, "[load_memory_region]\tReturn mem addr = %lp\n", ret);
 		//assert(ret == addr);
@@ -306,15 +305,15 @@ static void load_binary(void)
 		fprintf(stderr, "[load_binary]\tmap binary from %lp to %lx\n", binary_start_address, binary_end_address);
 		fprintf(stderr, "[load_binary]\there: %lx %lx %lx\n", g2h(binary_start_address), g2h(binary_end_address), g2h((thread_env->regs[15])));
 		int ret;
-		ret = mprotect(g2h(binary_start_address), (unsigned int)binary_end_address - binary_start_address, PROT_READ | PROT_WRITE);
+		ret = mprotect(g2h(binary_start_address), (abi_ulong)binary_end_address - binary_start_address, PROT_READ | PROT_WRITE);
 		fprintf(stderr, "[load_binary]\tRet = %lp\n", ret);
-		memcpy(g2h(binary_start_address), p, (unsigned int)binary_end_address - binary_start_address);
+		memcpy(g2h(binary_start_address), p, (abi_ulong)binary_end_address - binary_start_address);
 		
 		fprintf(stderr, "[load_binary]\there: %lp\n", *(abi_ulong *) g2h(thread_env->regs[15]));
 		//disas(stderr, g2h(thread_env->regs[15]), 10);
 
 		fprintf(stderr, "[load_binary]\tcode: %lx", *((abi_ulong *) g2h(0x102fa)));
-		mprotect(g2h(binary_start_address), (unsigned int)binary_end_address - binary_start_address, PROT_READ | PROT_WRITE | PROT_EXEC);
+		mprotect(g2h(binary_start_address), (abi_ulong)binary_end_address - binary_start_address, PROT_READ | PROT_WRITE | PROT_EXEC);
 		first = 0;
 	}
 	else {
@@ -1233,7 +1232,7 @@ void* offload_server_start_thread(void* arg)
 	//env = _env;
 	offload_server_init();
 	offload_server_daemonize();
-	
+	return NULL;
 }
 
 void offload_server_send_cmpxchg_start(abi_ulong cas_addr, abi_ulong cmpv, abi_ulong newv)
