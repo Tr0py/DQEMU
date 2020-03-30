@@ -303,23 +303,21 @@ static void load_binary(void)
 	static first = 1;
 	if (first) {
 		fprintf(stderr, "[load_binary]\tmap binary from %lp to %lx\n", binary_start_address, binary_end_address);
-		fprintf(stderr, "[load_binary]\there: %lx %lx %lx\n", g2h(binary_start_address), g2h(binary_end_address), g2h((thread_env->regs[15])));
+		// fprintf(stderr, "[load_binary]\there: %lx %lx %lx\n", g2h(binary_start_address), g2h(binary_end_address), g2h((thread_env->regs[15])));
 		int ret;
 		ret = mprotect(g2h(binary_start_address), (abi_ulong)binary_end_address - binary_start_address, PROT_READ | PROT_WRITE);
 		fprintf(stderr, "[load_binary]\tRet = %lp\n", ret);
 		memcpy(g2h(binary_start_address), p, (abi_ulong)binary_end_address - binary_start_address);
-		
-		fprintf(stderr, "[load_binary]\there: %lp\n", *(abi_ulong *) g2h(thread_env->regs[15]));
+
+		fprintf(stderr, "[DEBUG] checkpoint1\n");
 		//disas(stderr, g2h(thread_env->regs[15]), 10);
 
-		fprintf(stderr, "[load_binary]\tcode: %lx", *((abi_ulong *) g2h(0x102fa)));
 		mprotect(g2h(binary_start_address), (abi_ulong)binary_end_address - binary_start_address, PROT_READ | PROT_WRITE | PROT_EXEC);
 		first = 0;
 	}
-	else {
-		
-	}
-	p += (unsigned int)binary_end_address-binary_start_address;
+
+	fprintf(stderr, "binary begin value: %lp\n", *(abi_ulong*)p);
+	p += (abi_ulong)binary_end_address-binary_start_address;
 }
 
 /* Initialize execution thread and go to cpu loop */
@@ -356,15 +354,15 @@ void exec_func(void)
 	//fprintf(stderr, "this address: %lx\n", g2h(0x10324));
 	fprintf(stderr, "[exec_func]\tready to CPU_LOOP\n");
 
-	fprintf(stderr, "[exec_func]\tPC: %lp\n", thread_env->regs[15]);
+	// fprintf(stderr, "[exec_func]\tPC: %lp\n", thread_env->regs[15]);
 	
 	
-	fprintf(stderr, "[exec_func]\tregisters:\n");
+	// fprintf(stderr, "[exec_func]\tregisters:\n");
 	
-	for (int i = 0; i < 16; i++)
-	{
-		fprintf(stderr, "[exec_func]\t%lp\n", thread_env->regs[i]);
-	}
+	// for (int i = 0; i < 16; i++)
+	// {
+	// 	fprintf(stderr, "[exec_func]\t%lp\n", thread_env->regs[i]);
+	// }
 	//target_disas(stderr, ENV_GET_CPU(env), env->regs[15], 100);
 	//while (1) {;}
 
@@ -468,15 +466,15 @@ void exec_func_init(void)
 	//fprintf(stderr, "this address: %lx\n", g2h(0x10324));
 	fprintf(stderr, "[exec_func_init]\tready to CPU_LOOP\n");
 
-	fprintf(stderr, "[exec_func_init]\tPC: %lp\n", thread_env->regs[15]);
+	// fprintf(stderr, "[exec_func_init]\tPC: %lp\n", thread_env->regs[15]);
 	
 	
 	fprintf(stderr, "[exec_func_init]\tregisters:\n");
 	
-	for (int i = 0; i < 16; i++)
-	{
-		fprintf(stderr, "[exec_func_init]\t%lp\n", thread_env->regs[i]);
-	}
+	// for (int i = 0; i < 16; i++)
+	// {
+	// 	fprintf(stderr, "[exec_func_init]\t%lp\n", thread_env->regs[i]);
+	// }
 	//target_disas(stderr, ENV_GET_CPU(env), env->regs[15], 100);
 	//while (1) {;}
 

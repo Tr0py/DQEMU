@@ -710,17 +710,17 @@ static void offload_send_start(int first)
 	fprintf(stderr, "[client]\tdumping cpu\n");
 	dump_cpu();
 	fprintf(stderr, "[offload_send_start]\tregisters:\n");
-	for (int i = 0; i < 16; i++)
-	{
-		fprintf(stderr, "%lp\n", client_env->regs[i]);
-	}
+	// for (int i = 0; i < 16; i++)
+	// {
+	// 	fprintf(stderr, "%lp\n", client_env->regs[i]);
+	// }
 	fprintf(stderr, "first = %ld\n", first);
 	if (first) {
 		dump_self_maps();
 		dump_brk();
 		dump_code();
 	}
-	fprintf(stderr, "[client]\tPC: %ld\n", client_env->regs[15]);
+	// fprintf(stderr, "[client]\tPC: %ld\n", client_env->regs[15]);
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *) net_buffer;
 	fill_tcp_header(tcp_header, p - net_buffer - sizeof(struct tcp_msg_header), TAG_OFFLOAD_START);
 	fprintf(stderr, "sending buffer len: %ld\n", p - net_buffer);
