@@ -487,6 +487,7 @@ void exec_func_init(void)
 	pthread_cond_broadcast(&exec_func_init_cond);
 	pthread_mutex_unlock(&exec_func_init_mutex);
 
+	fprintf(stderr, "checkpint before cpu_loop\n");
 	//pthread_mutex_unlock(&socket_mutex);
 	cpu_loop(thread_env);
 	// here this thread reaches an end
@@ -559,6 +560,7 @@ static void offload_process_start(void)
 		}
 		fprintf(stderr, "[offload_process_start]\tInit done! %ld\n", exec_ready_to_init);
 		pthread_mutex_unlock(&exec_func_init_mutex);
+		fprintf(stderr, "checkpoint\n");
 	}
 	/*
 	pthread_t killer_thread;
@@ -575,7 +577,7 @@ void offload_server_send_mutex_request(abi_ulong mutex_addr, abi_ulong cmpv, abi
 	//!!!
 	//mutex_addr = h2g(mutex_addr);
 
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	*((target_ulong *)pp) = (target_ulong)mutex_addr;
 	pp += sizeof(target_ulong);
@@ -630,7 +632,7 @@ static void offload_server_send_page_request(target_ulong page_addr, abi_ulong p
 {
 	//pthread_mutex_lock(&socket_mutex);
 	fprintf(stderr, ">>>>>>>>> exec# %ld guest_base: %lx\n", offload_server_idx, guest_base);
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	/* prepare space for head */
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	/* page_addr and perm */
@@ -728,7 +730,8 @@ static void offload_process_page_content(void)
 	
 	abi_ulong perm = *((abi_ulong *) p);
 	p += sizeof(abi_ulong);
-	fprintf(stderr, "[offload_process_page_content]\tcontent: %ld %ld\n", *((uint64_t *) p), *((uint64_t *) p + 555));
+	fprintf(stderr, "[offload_process_page_content]\tcontent\n");
+	// fprintf(stderr, "[offload_process_page_content]\tcontent: %ld %ld\n", *((uint64_t *) p), *((uint64_t *) p + 555));
 
 	/* protect page and copy content to page */
 	mprotect(g2h(page_addr), TARGET_PAGE_SIZE, PROT_READ | PROT_WRITE);
@@ -789,7 +792,7 @@ void offload_page_recv_wake_up_thread(abi_ulong page_addr, int perm)
 static void offload_send_page_content(target_ulong page_addr, abi_ulong perm, int forwho)
 {
 	/* prepare space for head */
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *p = buf + sizeof(struct tcp_msg_header);
 	/* fill addr and perm */
 	*((target_ulong *) p) = page_addr;
@@ -1094,13 +1097,14 @@ static void offload_server_daemonize(void)
 		int size = get_size();
 		int packet_counter = get_number();
 		fprintf(stderr, "[offload_server_daemonize]\tsize: %ld + %ld\n", sizeof(struct tcp_msg_header), size);
+		fprintf(stderr, "[DEBUG]\ttag: %d\n",tag);
 		switch (tag)
 		{
 			case TAG_OFFLOAD_START:
 				fprintf(stderr, "[offload_server_daemonize]\ttag: offload start size: %ld\n", size);
 				try_recv(size);
 				offload_process_start();
-				//fprintf(stderr, "AAAAAAAAAAAAA\n");
+				fprintf(stderr, "AAAAAAAAAAAAA\n");
 				break;
 			
 			case TAG_OFFLOAD_PAGE_REQUEST:
@@ -1109,6 +1113,7 @@ static void offload_server_daemonize(void)
 				offload_process_page_request();
 				break;
 			case TAG_OFFLOAD_PAGE_CONTENT:
+				//error in page content
 				fprintf(stderr, "[offload_server_daemonize]\ttag: page content, size: %ld\n", size);
 				try_recv(size);
 				offload_process_page_content();
@@ -1244,7 +1249,7 @@ static void offload_send_mutex_done(abi_ulong mutex_addr, abi_ulong nowv)
 	//pthread_mutex_lock(&socket_mutex);
 	/* prepare space for head */
 	//p = BUFFER_PAYLOAD_P;
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *p = buf + sizeof(struct tcp_msg_header);
 	*((abi_ulong *) p) = mutex_addr;
     p += sizeof(abi_ulong);
@@ -1558,11 +1563,12 @@ static void try_recv(int size)
 		}
 		else
 		{
-			
+			fprintf(stderr, "checkpoint 1\n");
 			nleft -= res;
 			ptr += res;
 			if (nleft)
 				fprintf(stderr, "[try_recv]\treceived %ld B, %ld left.\n", res, nleft);
+			fprintf(stderr, "checkpoint 2\n");
 		}
 		
 	}

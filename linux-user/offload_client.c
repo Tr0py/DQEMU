@@ -151,7 +151,7 @@ int futex_table_cmp_requeue(abi_ulong uaddr, int futex_op, int val, abi_ulong va
 							abi_ulong uaddr2, int val3, int idx, int thread_id);
 void offload_connect_online_server(int idx);
 int false_sharing_flag = 0;
-__thread char buf[TARGET_PAGE_SIZE * 2];
+__thread char buf[TARGET_PAGE_SIZE * 4];
 
 extern PageMapDesc_server page_map_table_s[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE];
 extern PageMapDesc_server *get_pmd_s(abi_ulong page_addr);
@@ -1623,6 +1623,7 @@ static void futex_table_add(abi_ulong futex_addr, int idx, int thread_id)
 
 static void print_futex_table()
 {
+	return;
 	fprintf(stderr, "[print_futex_table]\tshowing futex table...\n");
 	int i = 0;
 	char buf[4096];
@@ -2420,7 +2421,7 @@ static void offload_process_mutex_done(void)
 
 static void offload_send_mutex_verified(int idx, int thread_idx)
 {
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	*((int *)pp) = thread_idx; 
 	pp += sizeof(int);
@@ -2432,7 +2433,7 @@ static void offload_send_mutex_verified(int idx, int thread_idx)
 
 static void offload_send_tid(int idx, abi_ulong tid)
 {
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	*((abi_ulong*)pp) = tid;
 	fprintf(stderr, "[offload_send_tid]\tsent tid = %lp to #%ld packet#%ld\n", *(abi_ulong*)pp, idx, get_number());
@@ -2676,7 +2677,7 @@ static void offload_process_syscall_request(void)
 static void offload_send_syscall_result(int idx, abi_long result, int thread_id)
 {
 	fprintf(stderr, "[offload_send_syscall_result]\tsending syscall result to #%ld->%ld with ret=%lp\n", idx, thread_id, result);
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	*((abi_long*)pp) = result;
 	pp += sizeof(abi_long);
@@ -2699,7 +2700,7 @@ void offload_send_do_fork_info(int idx, unsigned int flags, abi_ulong newsp,
                    abi_ulong child_tidptr)
 {
 	fprintf(stderr, "[offload_send_do_fork_info]\tsending do fork info to #%ld\n", idx);
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	*((unsigned int*)pp) = flags;
 	pp += sizeof(unsigned int);
@@ -2857,7 +2858,7 @@ void offload_master_send_page(abi_ulong page_addr, int perm, int idx)
 		pthread_mutex_lock(&master_mprotect_mutex);
 	mprotect(g2h(page_addr), TARGET_PAGE_SIZE, PROT_READ);//prevent writing at this time!!
 
-	char buf[TARGET_PAGE_SIZE * 2];
+	char buf[TARGET_PAGE_SIZE * 4];
 	char *p = buf + sizeof(struct tcp_msg_header);
 	/* fill addr and perm */
 	*((abi_ulong *) p) = page_addr;

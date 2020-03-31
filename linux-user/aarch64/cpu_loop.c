@@ -21,9 +21,9 @@
 #include "qemu.h"
 #include "cpu_loop-common.h"
 
-#ifndef DQEMU_DEBUG
-#define fprintf(...) ;//offload_log
-#endif /* DQEMU_DEBU */
+// #ifndef DQEMU_DEBUG
+// #define fprintf(...) ;//offload_log
+// #endif /* DQEMU_DEBU */
 
 #define get_user_code_u32(x, gaddr, env)                \
     ({ abi_long __r = get_user_u32((x), (gaddr));       \
@@ -82,12 +82,14 @@ extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
 /* AArch64 main loop */
 void cpu_loop(CPUARMState *env)
 {
+    fprintf(stderr, "cput loop here\n");
     CPUState *cs = CPU(arm_env_get_cpu(env));
     int trapnr, sig;
     abi_long ret;
     target_siginfo_t info;
     int n;
-    for (;;) {
+    for (;;)
+    {
         cpu_exec_start(cs);
         trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
@@ -114,7 +116,7 @@ void cpu_loop(CPUARMState *env)
                 ) && offload_server_idx>0)
             {
                 if (0&&(n == TARGET_NR_futex)&&
-                    (env->xregs[1]&FUTEX_WAIT == FUTEX_WAIT) && 
+                    (env->xregs[1] & FUTEX_WAIT == FUTEX_WAIT) && 
                     (offload_server_idx > 0))// futex wait from server, ignore
                 {
                     fprintf(stderr, "[arm-cpu]\tI am #%ld ignoring..futex\n", offload_server_idx);
@@ -164,9 +166,11 @@ void cpu_loop(CPUARMState *env)
             }
             break;
         case EXCP_INTERRUPT:
+            fprintf(stderr, "[arm-cpu]\tEXCP_INTERRUPT\n");
             /* just indicate that signals should be handled asap */
             break;
         case EXCP_UDEF:
+            fprintf(stderr, "[arm-cpu]\tEXCP_UDEF\n");
             info.si_signo = TARGET_SIGILL;
             info.si_errno = 0;
             info.si_code = TARGET_ILL_ILLOPN;
@@ -175,6 +179,7 @@ void cpu_loop(CPUARMState *env)
             break;
         case EXCP_PREFETCH_ABORT:
         case EXCP_DATA_ABORT:
+            fprintf(stderr, "[arm-cpu]\tEXCP_DATA_ABORT\n");
             info.si_signo = TARGET_SIGSEGV;
             info.si_errno = 0;
             /* XXX: check env->error_code */
@@ -184,6 +189,7 @@ void cpu_loop(CPUARMState *env)
             break;
         case EXCP_DEBUG:
         case EXCP_BKPT:
+            fprintf(stderr, "[arm-cpu]\tEXCP_DEBUG\n");
             sig = gdb_handlesig(cs, TARGET_SIGTRAP);
             if (sig) {
                 info.si_signo = sig;
@@ -193,9 +199,11 @@ void cpu_loop(CPUARMState *env)
             }
             break;
         case EXCP_SEMIHOST:
+            fprintf(stderr, "[arm-cpu]\tEXCP_SEMIHOST\n");
             env->xregs[0] = do_arm_semihosting(env);
             break;
         case EXCP_YIELD:
+            fprintf(stderr, "[arm-cpu]\tEXCP_YIELD\n");
             /* nothing to do here for user-mode, just resume guest code */
             break;
         case EXCP_ATOMIC:

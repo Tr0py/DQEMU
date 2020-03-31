@@ -7061,9 +7061,12 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, abi_ulong newsp,
 
     flags &= ~CLONE_IGNORED_FLAGS;
 
+    fprintf(stderr, "checkpoint1\n");
     /* Emulate vfork() with fork() */
     if (flags & CLONE_VFORK)
         flags &= ~(CLONE_VFORK | CLONE_VM);
+
+    fprintf(stderr, "checkpoint2\n");
 
     if (flags & CLONE_VM) {
         TaskState *parent_ts = (TaskState *)cpu->opaque;
@@ -7186,6 +7189,7 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, abi_ulong newsp,
             fork_end(0);
         }
     }
+    fprintf(stderr, "checkpoint2\n");
     qemu_log("[do_fork_server_local]\tReturning...\n");
     return ret;
 }
