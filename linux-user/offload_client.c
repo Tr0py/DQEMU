@@ -588,17 +588,7 @@ static int dump_self_maps(void)
 			}
 
 			section_count ++;
-
-			/*fprintf(fd, TARGET_ABI_FMT_lx "-" TARGET_ABI_FMT_lx
-					" %c%c%c%c %08" PRIx64 " %02x:%02x %ld %s%s\n",
-					h2g(min), h2g(max - 1) + 1, flag_r, flag_w,
-					flag_x, flag_p, offset, dev_maj, dev_min, inode,
-					path[0] ? "			" : "", path);*/
-
-
-			target_ulong flag = 0;
-
-
+			int flag = 0;
 			if (flag_w == 'w')
 			{
 				flag = flag | PROT_WRITE;
@@ -607,30 +597,22 @@ static int dump_self_maps(void)
 			{
 				flag = flag | PROT_READ;
 			}
-
-
 			if (flag_x == 'x')
 			{
 				flag = flag | PROT_EXEC;
 				binary_start_address = start;
 				binary_end_address = end;
 			}
-
 			fprintf(stderr, "memory region: %lx to %lx, host: %lx to %lx, %c%c%c\n", start, end, g2h(start), g2h(end), flag_r, flag_w, flag_x);
 			//fprintf(stderr, "[DEBUGGG]\t%lx", g2h(8e568));
 			*(target_ulong *)p = start;
 			p += sizeof(target_ulong);
-
 			*(target_ulong *)p = (end - start) / PAGE_SIZE;;
 			p += sizeof(target_ulong);
-
-
 			*(target_ulong *)p = flag;
 			p += sizeof(target_ulong);
-
 			*(target_ulong *)p = (target_ulong)(end - start);
 			p += sizeof(target_ulong);
-
 			fprintf(stderr, "%d\n", num);
 			num++;
 		}
@@ -645,10 +627,6 @@ static int dump_self_maps(void)
 	fclose(fp);
 	return 0;
 }
-
-
-
-
 
 
 static void dump_brk(void)
@@ -674,15 +652,12 @@ static void dump_code(void)
 
 	//printf("socket fd address: %lp\n", (void*)&skt);
 	fprintf(stderr, "[dump_code]\tbinary start: %lx end: %lx, pc: %lx\n", binary_start_address, binary_end_address, client_env->regs[15]);
-	int tmp[1];
-	cpu_memory_rw_debug(ENV_GET_CPU(client_env), 0x10324, tmp, 4, 1);
-	//fprintf(stderr, "[dump_code]\t0x10324 is at host %lx. = %lx = %lx\n", g2h(0x10324), *((target_ulong *) g2h(0x10324)), tmp[0]);
-	//target_disas(stderr, ENV_GET_CPU(client_env), client_env->regs[15], 10);
-	// why segmentation fault???????????????
-	//mprotect(g2h(binary_start_address), (unsigned int)binary_end_address - binary_start_address, PROT_READ);
-	memcpy((void *)p, (void *)(g2h(binary_start_address )), (unsigned int)binary_end_address - binary_start_address);
+
+	
+	memcpy((void *)p, (void *)(g2h(binary_start_address )), binary_end_address - binary_start_address);
 	//fprintf(stderr, "here: %ld %ld %ld\n", );
-	p += (target_ulong)binary_end_address - binary_start_address;
+	fprintf(stderr, "code begin value: %lx\n", *(target_ulong *)p);
+	p += binary_end_address - binary_start_address;
 	//fprintf(stderr, "first code: %lx", *((target_ulong *) g2h(client_env->regs[15])));
 }
 
@@ -690,15 +665,16 @@ static void dump_cpu(void)
 {
 	*((CPUARMState *) p) = *client_env;
 	p += sizeof(CPUARMState);
-	fprintf(stderr,"[dump_cpu]\tenv: %lp\n", client_env);
+	fprintf(stderr,"[dump_cpu]\tpc: %lp\n", client_env->pc);
 	CPUState *cpu = ENV_GET_CPU((CPUArchState *)client_env);
-	fprintf(stderr,"[dump_cpu]\tcpu: %lp\n", cpu);
 	TaskState *ts;
-	fprintf(stderr,"[dump_cpu]\topaque: %lp\n", cpu->opaque);
 	ts = cpu->opaque;
 	fprintf(stderr,"[dump_cpu]\tNOW child_tidptr: %lp\n", ts->child_tidptr);
 	*((TaskState*)p) = *ts;
 	p += sizeof(TaskState);
+	// fprintf(stderr, "[dump_cpu]\t registers\n");
+	// for (int i = 0; i < 32;i++)
+	// 	fprintf(stderr, "xregs[%d]: %d\n", i, client_env->xregs[i]);
 }
 
 /* Offload the following guest thread to slave node. */
@@ -1912,8 +1888,6 @@ void syscall_daemonize(void)
 {
 	offload_mode = 4;
 
-
-
 	pthread_mutex_lock(&do_syscall_mutex);
 	do_syscall_flag = 0;
 	syscall_global_pointer = NULL;
@@ -1921,7 +1895,6 @@ void syscall_daemonize(void)
 	syscall_started_flag = 1;
 	while (1)
 	{
-
 		fprintf(stderr, "[syscall_daemonize]\twaiting for new syscall...\n");
 		pthread_mutex_lock(&do_syscall_mutex);
 		while (do_syscall_flag == 0|| syscall_global_pointer == NULL)
@@ -1939,7 +1912,6 @@ void syscall_daemonize(void)
 		}
 		pthread_mutex_unlock(&do_syscall_mutex);
 		fprintf(stderr, "[syscall_daemonize]\tgot new syscall!\n");
-
 
 		pthread_mutex_lock(&do_syscall_mutex);
 		syscall_p = syscall_global_pointer;
@@ -2056,10 +2028,11 @@ void syscall_daemonize(void)
 			{
 				fprintf(stderr, "[syscall_daemonize]\tChild End!\n");
 				fprintf(stderr, "checkpiont 1\n");
+				// crash here
 				offload_segfault_handler_positive(futex_addr, 2);
 				fprintf(stderr, "checkpiont 2\n");
 				fprintf(stderr, "futex addr : %lp\n",futex_addr);
-				*(int*)g2h(futex_addr) = 0;
+				*(target_ulong*)g2h(futex_addr) = 0;
 			}
 			fprintf(stderr, "checkpiont 3\n");
 			futex_table_wake(futex_addr, wakeup_num, idx, thread_id);

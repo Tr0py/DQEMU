@@ -97,7 +97,7 @@ static void offload_server_init(void)
 	pthread_mutex_init(&socket_mutex, NULL);
 	int tmp = 1;
 	setsockopt(sktfd, SOL_SOCKET, SO_REUSEADDR, &tmp, sizeof(tmp));
-	if(bind(sktfd, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) == -1)
+	if(bind(sktfd, (struct sockaddr *)& sockaddr, sizeof(sockaddr)) == -1)
 	{
 		printf("[offload_server_init]\tbind socket failed, at port# %ld, errno:%ld\n", server_port_of(offload_server_idx), errno);
         perror("bind");
@@ -137,32 +137,23 @@ static void offload_server_init(void)
 static void load_cpu(void)
 {
 	// copy the CPU struct
-	
-
 	//memcpy(thread_env, p, sizeof(CPUARMState));
 	extern CPUArchState *env_bak;
 	extern __thread CPUArchState *thread_env;
-	// if (count_n != 0) {
-	// 	thread_env = cpu_copy(env_bak);
-	// 	assert(thread_env);
-	// }
-	// count_n++;
 	assert(thread_env);
 	*((CPUARMState *) thread_env) = *((CPUARMState *) p);
-
 	p += sizeof(CPUARMState);
-	
-
-	fprintf(stderr,"[load_cpu]\tthread_env: %lp\n", thread_env);
+	fprintf(stderr,"[load_cpu]\tpc: %lp\n", thread_env->pc);
+	// fprintf(stderr, "[load_cpu]\tregisters\n");
+	// for (int i = 0; i < 32;i++)
+	// 	fprintf(stderr, "xregs[%d]: %d\n", i, thread_env->xregs[i]);
 	CPUState *cpu = ENV_GET_CPU(thread_env);
 	// extern CPUArchState *thread_cpu;
 	extern __thread CPUState *thread_cpu;
 	thread_cpu = cpu;
 	thread_cpu->env_ptr = thread_env;
-	fprintf(stderr,"[load_cpu]\tcpu: %lp\n", cpu);
 	TaskState *ts1;
 
-	fprintf(stderr,"[load_cpu]\topaque: %lp\n", cpu->opaque);
 	ts1 = cpu->opaque;
 	fprintf(stderr,"[load_cpu]\tNOW child_tidptr: %lp\n", ts1->child_tidptr);
 	/* TaskState is a void*, we've to set it mannually */
@@ -172,37 +163,13 @@ static void load_cpu(void)
 	cpu->opaque = ts;
 	fprintf(stderr,"[load_cpu]\tNOW child_tidptr: %lp\n", ts->child_tidptr);
 	assert(ts->child_tidptr);
-	/*vfp_set_fpscr(env, *((target_ulong*) p));
-	fprintf(stderr, "fpscr: %ld\n", *((target_ulong*) p));
-	p += sizeof(target_ulong);
 	
-    //env->cp15.tpidrro_el0 = client_regs[1] & 0xffffffff;
-    env->cp15.tpidrro_el[0] = *((uint64_t*) p);
-	fprintf(stderr, "cp15: %ld\n", *((uint64_t*) p));
-	p += sizeof(uint64_t);
-	
-    //cpsr_write(env, client_regs[2], 0xffffffff);	
-    cpsr_write(env, *((target_ulong*) p), 0xffffffff);
-	fprintf(stderr, "cpsr: %ld\n", *((target_ulong*) p));
-	p += sizeof(target_ulong);
-	
-	
-	memcpy(env->vfp.regs, p, sizeof(env->vfp.regs));
-	p +=  sizeof(env->vfp.regs);
-	
-	memcpy(env->regs, p, sizeof(env->regs));
-	p +=  sizeof(env->regs);
-	fprintf(stderr, "pc: %lx\n",env->regs[15]);*/
-
-	fprintf(stderr, "[load_cpu]\tr0: %ld\n", thread_env->regs[0]);
 }
 
 // dump memory_region
 static void load_memory_region(void)
 {
 	// map the memory region:
-	
-	
 	target_ulong num = *(target_ulong *)p;
     p += sizeof(target_ulong);
 	fprintf(stderr, "[load_memory_region]\tmemory region of 0%ld\n", num);
@@ -309,7 +276,6 @@ static void load_binary(void)
 		fprintf(stderr, "[load_binary]\tRet = %lp\n", ret);
 		memcpy(g2h(binary_start_address), p, (target_ulong)binary_end_address - binary_start_address);
 
-		fprintf(stderr, "[DEBUG] checkpoint1\n");
 		//disas(stderr, g2h(thread_env->regs[15]), 10);
 
 		mprotect(g2h(binary_start_address), (target_ulong)binary_end_address - binary_start_address, PROT_READ | PROT_WRITE | PROT_EXEC);
@@ -560,7 +526,6 @@ static void offload_process_start(void)
 		}
 		fprintf(stderr, "[offload_process_start]\tInit done! %ld\n", exec_ready_to_init);
 		pthread_mutex_unlock(&exec_func_init_mutex);
-		fprintf(stderr, "checkpoint\n");
 	}
 	/*
 	pthread_t killer_thread;
@@ -587,8 +552,8 @@ void offload_server_send_mutex_request(target_ulong mutex_addr, target_ulong cmp
 	pp += sizeof(target_ulong);
 	*((target_ulong *)pp) = newv;
 	pp += sizeof(target_ulong);
-	*((int *)pp) = offload_thread_idx;
-	pp += sizeof(int);
+	*((target_long *)pp) = offload_thread_idx;
+	pp += sizeof(target_long);
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *) buf;
 	fill_tcp_header(tcp_header, pp - buf - sizeof(struct tcp_msg_header), TAG_OFFLOAD_CMPXCHG_REQUEST);
 	/* we should lock first in case verified returns before we sleep!!!!!! */
@@ -976,7 +941,7 @@ int offload_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc)
 /* send page request; sleep until page is sent back */
 int offload_segfault_handler_positive(target_ulong page_addr, int perm)
 {
-	offload_send_page_request_and_wait(page_addr & 0xfffff000, perm);
+	offload_send_page_request_and_wait(page_addr & TARGET_PAGE_MASK, perm);
 	return 1;
 	//TODO self map to avoid extra fetching
 	struct timeb t, tend;
@@ -1066,7 +1031,6 @@ static void offload_server_daemonize(void)
 	struct sockaddr_in client_addr;
 	socklen_t client_addr_size = sizeof(client_addr);
 	client_socket = accept(sktfd, (struct sockaddr*)&client_addr, &client_addr_size);
-	fprintf(stderr, "need to be awaked?\n");
 	int flag = 1;
 	int result = setsockopt(client_socket,            /* socket affected */
                         IPPROTO_TCP,     /* set option at TCP level */
@@ -1566,12 +1530,10 @@ static void try_recv(int size)
 		}
 		else
 		{
-			fprintf(stderr, "checkpoint 1\n");
 			nleft -= res;
 			ptr += res;
 			if (nleft)
 				fprintf(stderr, "[try_recv]\treceived %ld B, %ld left.\n", res, nleft);
-			fprintf(stderr, "checkpoint 2\n");
 		}
 		
 	}

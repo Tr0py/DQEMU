@@ -7246,8 +7246,8 @@ static int do_fork(CPUArchState *env, unsigned int flags, target_ulong newsp,
                    target_ulong parent_tidptr, target_ulong newtls,
                    target_ulong child_tidptr)
 {
-    qemu_log("[do_fork]\tenv %lp flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
-                                    env, flags, newsp, parent_tidptr, newtls, child_tidptr);
+    qemu_log("[do_fork]\tflags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
+                                    flags, newsp, parent_tidptr, newtls, child_tidptr);
     CPUState *cpu = ENV_GET_CPU(env);
     int ret;
     TaskState *ts;

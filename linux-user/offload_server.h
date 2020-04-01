@@ -72,7 +72,7 @@ int offload_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc);
 static void offload_process_page_perm(void);
 void offload_server_start(void);
 void* offload_center_server_start(void*);
-static void offload_server_process_futex_wake_result(void);
+// static void offload_server_process_futex_wake_result(void);
 void offload_server_send_cmpxchg_start(target_ulong, target_ulong, target_ulong);
 void offload_server_send_cmpxchg_end(target_ulong, target_ulong);
 extern void offload_server_qemu_init(void);
