@@ -97,7 +97,7 @@ extern void offload_log(FILE*, const char*, ...);
 extern pthread_mutex_t master_mprotect_mutex;
 extern __thread int offload_mode;
 
-static uint32_t get_tag(void);
+// static uint32_t get_tag(void);
 /* same as PROT_xxx */
 #define PAGE_NONE   0x0000
 #define PAGE_READ   0x0001

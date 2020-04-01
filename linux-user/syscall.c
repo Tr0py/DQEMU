@@ -540,8 +540,8 @@ enum {
     QEMU___IFLA_XDP_MAX,
 };
 
-typedef abi_long (*TargetFdDataFunc)(void *, size_t);
-typedef abi_long (*TargetFdAddrFunc)(void *, abi_ulong, socklen_t);
+typedef target_long (*TargetFdDataFunc)(void *, size_t);
+typedef target_long (*TargetFdAddrFunc)(void *, target_ulong, socklen_t);
 typedef struct TargetFdTrans {
     TargetFdDataFunc host_to_target_data;
     TargetFdDataFunc target_to_host_data;
@@ -899,7 +899,7 @@ static inline int target_to_host_errno(int err)
     return err;
 }
 
-static inline abi_long get_errno(abi_long ret)
+static inline target_long get_errno(target_long ret)
 {
     if (ret == -1)
         return -host_to_target_errno(errno);
@@ -1107,11 +1107,11 @@ static inline int host_to_target_sock_type(int host_type)
     return target_type;
 }
 
-abi_ulong target_brk;
-abi_ulong target_original_brk;
-static abi_ulong brk_page;
+target_ulong target_brk;
+target_ulong target_original_brk;
+static target_ulong brk_page;
 
-void target_set_brk(abi_ulong new_brk)
+void target_set_brk(target_ulong new_brk)
 {
     target_original_brk = target_brk = HOST_PAGE_ALIGN(new_brk);
     brk_page = HOST_PAGE_ALIGN(target_brk);
@@ -1121,10 +1121,10 @@ void target_set_brk(abi_ulong new_brk)
 #define DEBUGF_BRK(message, args...)
 
 /* do_brk() must return target values and target errnos. */
-abi_long do_brk(abi_ulong new_brk)
+target_long do_brk(target_ulong new_brk)
 {
-    abi_long mapped_addr;
-    abi_ulong new_alloc_size;
+    target_long mapped_addr;
+    target_ulong new_alloc_size;
 
     DEBUGF_BRK("do_brk(" TARGET_ABI_FMT_lx ") -> ", new_brk);
 
@@ -1198,27 +1198,27 @@ abi_long do_brk(abi_ulong new_brk)
     return target_brk;
 }
 
-static inline abi_long copy_from_user_fdset(fd_set *fds,
-                                            abi_ulong target_fds_addr,
+static inline target_long copy_from_user_fdset(fd_set *fds,
+                                            target_ulong target_fds_addr,
                                             int n)
 {
     int i, nw, j, k;
-    abi_ulong b, *target_fds;
+    target_ulong b, *target_fds;
 
     nw = DIV_ROUND_UP(n, TARGET_ABI_BITS);
     if (!(target_fds = lock_user(VERIFY_READ,
                                  target_fds_addr,
-                                 sizeof(abi_ulong) * nw,
+                                 sizeof(target_ulong) * nw,
                                  1)))
         return -TARGET_EFAULT;
 
     FD_ZERO(fds);
     k = 0;
     for (i = 0; i < nw; i++) {
-        /* grab the abi_ulong */
+        /* grab the target_ulong */
         __get_user(b, &target_fds[i]);
         for (j = 0; j < TARGET_ABI_BITS; j++) {
-            /* check the bit inside the abi_ulong */
+            /* check the bit inside the target_ulong */
             if ((b >> j) & 1)
                 FD_SET(k, fds);
             k++;
@@ -1230,8 +1230,8 @@ static inline abi_long copy_from_user_fdset(fd_set *fds,
     return 0;
 }
 
-static inline abi_ulong copy_from_user_fdset_ptr(fd_set *fds, fd_set **fds_ptr,
-                                                 abi_ulong target_fds_addr,
+static inline target_ulong copy_from_user_fdset_ptr(fd_set *fds, fd_set **fds_ptr,
+                                                 target_ulong target_fds_addr,
                                                  int n)
 {
     if (target_fds_addr) {
@@ -1244,18 +1244,18 @@ static inline abi_ulong copy_from_user_fdset_ptr(fd_set *fds, fd_set **fds_ptr,
     return 0;
 }
 
-static inline abi_long copy_to_user_fdset(abi_ulong target_fds_addr,
+static inline target_long copy_to_user_fdset(target_ulong target_fds_addr,
                                           const fd_set *fds,
                                           int n)
 {
     int i, nw, j, k;
-    abi_long v;
-    abi_ulong *target_fds;
+    target_long v;
+    target_ulong *target_fds;
 
     nw = DIV_ROUND_UP(n, TARGET_ABI_BITS);
     if (!(target_fds = lock_user(VERIFY_WRITE,
                                  target_fds_addr,
-                                 sizeof(abi_ulong) * nw,
+                                 sizeof(target_ulong) * nw,
                                  0)))
         return -TARGET_EFAULT;
 
@@ -1263,13 +1263,13 @@ static inline abi_long copy_to_user_fdset(abi_ulong target_fds_addr,
     for (i = 0; i < nw; i++) {
         v = 0;
         for (j = 0; j < TARGET_ABI_BITS; j++) {
-            v |= ((abi_ulong)(FD_ISSET(k, fds) != 0) << j);
+            v |= ((target_ulong)(FD_ISSET(k, fds) != 0) << j);
             k++;
         }
         __put_user(v, &target_fds[i]);
     }
 
-    unlock_user(target_fds, target_fds_addr, sizeof(abi_ulong) * nw);
+    unlock_user(target_fds, target_fds_addr, sizeof(target_ulong) * nw);
 
     return 0;
 }
@@ -1280,7 +1280,7 @@ static inline abi_long copy_to_user_fdset(abi_ulong target_fds_addr,
 #define HOST_HZ 100
 #endif
 
-static inline abi_long host_to_target_clock_t(long ticks)
+static inline target_long host_to_target_clock_t(long ticks)
 {
 #if HOST_HZ == TARGET_HZ
     return ticks;
@@ -1289,7 +1289,7 @@ static inline abi_long host_to_target_clock_t(long ticks)
 #endif
 }
 
-static inline abi_long host_to_target_rusage(abi_ulong target_addr,
+static inline target_long host_to_target_rusage(target_ulong target_addr,
                                              const struct rusage *rusage)
 {
     struct target_rusage *target_rusage;
@@ -1319,9 +1319,9 @@ static inline abi_long host_to_target_rusage(abi_ulong target_addr,
     return 0;
 }
 
-static inline rlim_t target_to_host_rlim(abi_ulong target_rlim)
+static inline rlim_t target_to_host_rlim(target_ulong target_rlim)
 {
-    abi_ulong target_rlim_swap;
+    target_ulong target_rlim_swap;
     rlim_t result;
     
     target_rlim_swap = tswapal(target_rlim);
@@ -1335,12 +1335,12 @@ static inline rlim_t target_to_host_rlim(abi_ulong target_rlim)
     return result;
 }
 
-static inline abi_ulong host_to_target_rlim(rlim_t rlim)
+static inline target_ulong host_to_target_rlim(rlim_t rlim)
 {
-    abi_ulong target_rlim_swap;
-    abi_ulong result;
+    target_ulong target_rlim_swap;
+    target_ulong result;
     
-    if (rlim == RLIM_INFINITY || rlim != (abi_long)rlim)
+    if (rlim == RLIM_INFINITY || rlim != (target_long)rlim)
         target_rlim_swap = TARGET_RLIM_INFINITY;
     else
         target_rlim_swap = rlim;
@@ -1387,8 +1387,8 @@ static inline int target_to_host_resource(int code)
     }
 }
 
-static inline abi_long copy_from_user_timeval(struct timeval *tv,
-                                              abi_ulong target_tv_addr)
+static inline target_long copy_from_user_timeval(struct timeval *tv,
+                                              target_ulong target_tv_addr)
 {
     struct target_timeval *target_tv;
 
@@ -1403,7 +1403,7 @@ static inline abi_long copy_from_user_timeval(struct timeval *tv,
     return 0;
 }
 
-static inline abi_long copy_to_user_timeval(abi_ulong target_tv_addr,
+static inline target_long copy_to_user_timeval(target_ulong target_tv_addr,
                                             const struct timeval *tv)
 {
     struct target_timeval *target_tv;
@@ -1419,8 +1419,8 @@ static inline abi_long copy_to_user_timeval(abi_ulong target_tv_addr,
     return 0;
 }
 
-static inline abi_long copy_from_user_timezone(struct timezone *tz,
-                                               abi_ulong target_tz_addr)
+static inline target_long copy_from_user_timezone(struct timezone *tz,
+                                               target_ulong target_tz_addr)
 {
     struct target_timezone *target_tz;
 
@@ -1439,8 +1439,8 @@ static inline abi_long copy_from_user_timezone(struct timezone *tz,
 #if defined(TARGET_NR_mq_open) && defined(__NR_mq_open)
 #include <mqueue.h>
 
-static inline abi_long copy_from_user_mq_attr(struct mq_attr *attr,
-                                              abi_ulong target_mq_attr_addr)
+static inline target_long copy_from_user_mq_attr(struct mq_attr *attr,
+                                              target_ulong target_mq_attr_addr)
 {
     struct target_mq_attr *target_mq_attr;
 
@@ -1458,7 +1458,7 @@ static inline abi_long copy_from_user_mq_attr(struct mq_attr *attr,
     return 0;
 }
 
-static inline abi_long copy_to_user_mq_attr(abi_ulong target_mq_attr_addr,
+static inline target_long copy_to_user_mq_attr(target_ulong target_mq_attr_addr,
                                             const struct mq_attr *attr)
 {
     struct target_mq_attr *target_mq_attr;
@@ -1480,15 +1480,15 @@ static inline abi_long copy_to_user_mq_attr(abi_ulong target_mq_attr_addr,
 
 #if defined(TARGET_NR_select) || defined(TARGET_NR__newselect)
 /* do_select() must return target values and target errnos. */
-static abi_long do_select(int n,
-                          abi_ulong rfd_addr, abi_ulong wfd_addr,
-                          abi_ulong efd_addr, abi_ulong target_tv_addr)
+static target_long do_select(int n,
+                          target_ulong rfd_addr, target_ulong wfd_addr,
+                          target_ulong efd_addr, target_ulong target_tv_addr)
 {
     fd_set rfds, wfds, efds;
     fd_set *rfds_ptr, *wfds_ptr, *efds_ptr;
     struct timeval tv;
     struct timespec ts, *ts_ptr;
-    abi_long ret;
+    target_long ret;
 
     ret = copy_from_user_fdset_ptr(&rfds, &rfds_ptr, rfd_addr, n);
     if (ret) {
@@ -1537,10 +1537,10 @@ static abi_long do_select(int n,
 }
 
 #if defined(TARGET_WANT_OLD_SYS_SELECT)
-static abi_long do_old_select(abi_ulong arg1)
+static target_long do_old_select(target_ulong arg1)
 {
     struct target_sel_arg_struct *sel;
-    abi_ulong inp, outp, exp, tvp;
+    target_ulong inp, outp, exp, tvp;
     long nsel;
 
     if (!lock_user_struct(VERIFY_READ, sel, arg1, 1)) {
@@ -1560,7 +1560,7 @@ static abi_long do_old_select(abi_ulong arg1)
 #endif
 #endif
 
-static abi_long do_pipe2(int host_pipe[], int flags)
+static target_long do_pipe2(int host_pipe[], int flags)
 {
 #ifdef CONFIG_PIPE2
     return pipe2(host_pipe, flags);
@@ -1569,11 +1569,11 @@ static abi_long do_pipe2(int host_pipe[], int flags)
 #endif
 }
 
-static abi_long do_pipe(void *cpu_env, abi_ulong pipedes,
+static target_long do_pipe(void *cpu_env, target_ulong pipedes,
                         int flags, int is_pipe2)
 {
     int host_pipe[2];
-    abi_long ret;
+    target_long ret;
     ret = flags ? do_pipe2(host_pipe, flags) : pipe(host_pipe);
 
     if (is_error(ret))
@@ -1603,8 +1603,8 @@ static abi_long do_pipe(void *cpu_env, abi_ulong pipedes,
     return get_errno(ret);
 }
 
-static inline abi_long target_to_host_ip_mreq(struct ip_mreqn *mreqn,
-                                              abi_ulong target_addr,
+static inline target_long target_to_host_ip_mreq(struct ip_mreqn *mreqn,
+                                              target_ulong target_addr,
                                               socklen_t len)
 {
     struct target_ip_mreqn *target_smreqn;
@@ -1621,8 +1621,8 @@ static inline abi_long target_to_host_ip_mreq(struct ip_mreqn *mreqn,
     return 0;
 }
 
-static inline abi_long target_to_host_sockaddr(int fd, struct sockaddr *addr,
-                                               abi_ulong target_addr,
+static inline target_long target_to_host_sockaddr(int fd, struct sockaddr *addr,
+                                               target_ulong target_addr,
                                                socklen_t len)
 {
     const socklen_t unix_maxlen = sizeof (struct sockaddr_un);
@@ -1678,7 +1678,7 @@ static inline abi_long target_to_host_sockaddr(int fd, struct sockaddr *addr,
     return 0;
 }
 
-static inline abi_long host_to_target_sockaddr(abi_ulong target_addr,
+static inline target_long host_to_target_sockaddr(target_ulong target_addr,
                                                struct sockaddr *addr,
                                                socklen_t len)
 {
@@ -1716,12 +1716,12 @@ static inline abi_long host_to_target_sockaddr(abi_ulong target_addr,
     return 0;
 }
 
-static inline abi_long target_to_host_cmsg(struct msghdr *msgh,
+static inline target_long target_to_host_cmsg(struct msghdr *msgh,
                                            struct target_msghdr *target_msgh)
 {
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(msgh);
-    abi_long msg_controllen;
-    abi_ulong target_cmsg_addr;
+    target_long msg_controllen;
+    target_ulong target_cmsg_addr;
     struct target_cmsghdr *target_cmsg, *target_cmsg_start;
     socklen_t space = 0;
     
@@ -1783,7 +1783,7 @@ static inline abi_long target_to_host_cmsg(struct msghdr *msgh,
             __get_user(cred->uid, &target_cred->uid);
             __get_user(cred->gid, &target_cred->gid);
         } else {
-            gemu_log("Unsupported ancillary data: %ld/%ld\n",
+            gemu_log("Unsupported ancillary data: %d/%d\n",
                                         cmsg->cmsg_level, cmsg->cmsg_type);
             memcpy(data, target_data, len);
         }
@@ -1798,12 +1798,12 @@ static inline abi_long target_to_host_cmsg(struct msghdr *msgh,
     return 0;
 }
 
-static inline abi_long host_to_target_cmsg(struct target_msghdr *target_msgh,
+static inline target_long host_to_target_cmsg(struct target_msghdr *target_msgh,
                                            struct msghdr *msgh)
 {
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(msgh);
-    abi_long msg_controllen;
-    abi_ulong target_cmsg_addr;
+    target_long msg_controllen;
+    target_ulong target_cmsg_addr;
     struct target_cmsghdr *target_cmsg, *target_cmsg_start;
     socklen_t space = 0;
 
@@ -1919,11 +1919,11 @@ static inline abi_long host_to_target_cmsg(struct target_msghdr *target_msgh,
             switch (cmsg->cmsg_type) {
             case IP_TTL:
             {
-                abi_ulong *v = (abi_ulong *)data;
-                abi_ulong *t_int = (abi_ulong *)target_data;
+                target_ulong *v = (target_ulong *)data;
+                target_ulong *t_int = (target_ulong *)target_data;
 
-                if (len != sizeof(abi_ulong) ||
-                    tgt_len != sizeof(abi_ulong)) {
+                if (len != sizeof(target_ulong) ||
+                    tgt_len != sizeof(target_ulong)) {
                     goto unimplemented;
                 }
                 __put_user(*v, t_int);
@@ -1963,11 +1963,11 @@ static inline abi_long host_to_target_cmsg(struct target_msghdr *target_msgh,
             switch (cmsg->cmsg_type) {
             case IPV6_HOPLIMIT:
             {
-                abi_ulong *v = (abi_ulong *)data;
-                abi_ulong *t_int = (abi_ulong *)target_data;
+                target_ulong *v = (target_ulong *)data;
+                target_ulong *t_int = (target_ulong *)target_data;
 
-                if (len != sizeof(abi_ulong) ||
-                    tgt_len != sizeof(abi_ulong)) {
+                if (len != sizeof(target_ulong) ||
+                    tgt_len != sizeof(target_ulong)) {
                     goto unimplemented;
                 }
                 __put_user(*v, t_int);
@@ -2005,7 +2005,7 @@ static inline abi_long host_to_target_cmsg(struct target_msghdr *target_msgh,
 
         default:
         unimplemented:
-            gemu_log("Unsupported ancillary data: %ld/%ld\n",
+            gemu_log("Unsupported ancillary data: %d/%d\n",
                                         cmsg->cmsg_level, cmsg->cmsg_type);
             memcpy(target_data, data, MIN(len, tgt_len));
             if (tgt_len > len) {
@@ -2039,13 +2039,13 @@ static void tswap_nlmsghdr(struct nlmsghdr *nlh)
     nlh->nlmsg_pid = tswap32(nlh->nlmsg_pid);
 }
 
-static abi_long host_to_target_for_each_nlmsg(struct nlmsghdr *nlh,
+static target_long host_to_target_for_each_nlmsg(struct nlmsghdr *nlh,
                                               size_t len,
-                                              abi_long (*host_to_target_nlmsg)
+                                              target_long (*host_to_target_nlmsg)
                                                        (struct nlmsghdr *))
 {
-    abi_ulong nlmsg_len;
-    abi_long ret;
+    target_ulong nlmsg_len;
+    target_long ret;
 
     while (len > sizeof(struct nlmsghdr)) {
 
@@ -2084,9 +2084,9 @@ static abi_long host_to_target_for_each_nlmsg(struct nlmsghdr *nlh,
     return 0;
 }
 
-static abi_long target_to_host_for_each_nlmsg(struct nlmsghdr *nlh,
+static target_long target_to_host_for_each_nlmsg(struct nlmsghdr *nlh,
                                               size_t len,
-                                              abi_long (*target_to_host_nlmsg)
+                                              target_long (*target_to_host_nlmsg)
                                                        (struct nlmsghdr *))
 {
     int ret;
@@ -2122,14 +2122,14 @@ static abi_long target_to_host_for_each_nlmsg(struct nlmsghdr *nlh,
 }
 
 #ifdef CONFIG_RTNETLINK
-static abi_long host_to_target_for_each_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_for_each_nlattr(struct nlattr *nlattr,
                                                size_t len, void *context,
-                                               abi_long (*host_to_target_nlattr)
+                                               target_long (*host_to_target_nlattr)
                                                         (struct nlattr *,
                                                          void *context))
 {
     unsigned short nla_len;
-    abi_long ret;
+    target_long ret;
 
     while (len > sizeof(struct nlattr)) {
         nla_len = nlattr->nla_len;
@@ -2149,13 +2149,13 @@ static abi_long host_to_target_for_each_nlattr(struct nlattr *nlattr,
     return 0;
 }
 
-static abi_long host_to_target_for_each_rtattr(struct rtattr *rtattr,
+static target_long host_to_target_for_each_rtattr(struct rtattr *rtattr,
                                                size_t len,
-                                               abi_long (*host_to_target_rtattr)
+                                               target_long (*host_to_target_rtattr)
                                                         (struct rtattr *))
 {
     unsigned short rta_len;
-    abi_long ret;
+    target_long ret;
 
     while (len > sizeof(struct rtattr)) {
         rta_len = rtattr->rta_len;
@@ -2177,11 +2177,11 @@ static abi_long host_to_target_for_each_rtattr(struct rtattr *rtattr,
 
 #define NLA_DATA(nla) ((void *)((char *)(nla)) + NLA_HDRLEN)
 
-static abi_long host_to_target_data_bridge_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_data_bridge_nlattr(struct nlattr *nlattr,
                                                   void *context)
 {
     uint16_t *u16;
-    abi_ulong *u32;
+    target_ulong *u32;
     uint64_t *u64;
 
     switch (nlattr->nla_type) {
@@ -2216,7 +2216,7 @@ static abi_long host_to_target_data_bridge_nlattr(struct nlattr *nlattr,
         u16 = NLA_DATA(nlattr);
         *u16 = tswap16(*u16);
         break;
-    /* abi_ulong */
+    /* target_ulong */
     case QEMU_IFLA_BR_FORWARD_DELAY:
     case QEMU_IFLA_BR_HELLO_TIME:
     case QEMU_IFLA_BR_MAX_AGE:
@@ -2249,17 +2249,17 @@ static abi_long host_to_target_data_bridge_nlattr(struct nlattr *nlattr,
     case QEMU_IFLA_BR_BRIDGE_ID:
         break;
     default:
-        gemu_log("Unknown QEMU_IFLA_BR type %ld\n", nlattr->nla_type);
+        gemu_log("Unknown QEMU_IFLA_BR type %d\n", nlattr->nla_type);
         break;
     }
     return 0;
 }
 
-static abi_long host_to_target_slave_data_bridge_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_slave_data_bridge_nlattr(struct nlattr *nlattr,
                                                         void *context)
 {
     uint16_t *u16;
-    abi_ulong *u32;
+    target_ulong *u32;
     uint64_t *u64;
 
     switch (nlattr->nla_type) {
@@ -2310,7 +2310,7 @@ static abi_long host_to_target_slave_data_bridge_nlattr(struct nlattr *nlattr,
     case QEMU_IFLA_BRPORT_BRIDGE_ID:
         break;
     default:
-        gemu_log("Unknown QEMU_IFLA_BRPORT type %ld\n", nlattr->nla_type);
+        gemu_log("Unknown QEMU_IFLA_BRPORT type %d\n", nlattr->nla_type);
         break;
     }
     return 0;
@@ -2323,7 +2323,7 @@ struct linkinfo_context {
     char *slave_name;
 };
 
-static abi_long host_to_target_data_linkinfo_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_data_linkinfo_nlattr(struct nlattr *nlattr,
                                                     void *context)
 {
     struct linkinfo_context *li_context = context;
@@ -2367,17 +2367,17 @@ static abi_long host_to_target_data_linkinfo_nlattr(struct nlattr *nlattr,
         }
         break;
     default:
-        gemu_log("Unknown host QEMU_IFLA_INFO type: %ld\n", nlattr->nla_type);
+        gemu_log("Unknown host QEMU_IFLA_INFO type: %d\n", nlattr->nla_type);
         break;
     }
 
     return 0;
 }
 
-static abi_long host_to_target_data_inet_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_data_inet_nlattr(struct nlattr *nlattr,
                                                 void *context)
 {
-    abi_ulong *u32;
+    target_ulong *u32;
     int i;
 
     switch (nlattr->nla_type) {
@@ -2389,15 +2389,15 @@ static abi_long host_to_target_data_inet_nlattr(struct nlattr *nlattr,
         }
         break;
     default:
-        gemu_log("Unknown host AF_INET type: %ld\n", nlattr->nla_type);
+        gemu_log("Unknown host AF_INET type: %d\n", nlattr->nla_type);
     }
     return 0;
 }
 
-static abi_long host_to_target_data_inet6_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_data_inet6_nlattr(struct nlattr *nlattr,
                                                 void *context)
 {
-    abi_ulong *u32;
+    target_ulong *u32;
     uint64_t *u64;
     struct ifla_cacheinfo *ci;
     int i;
@@ -2409,12 +2409,12 @@ static abi_long host_to_target_data_inet6_nlattr(struct nlattr *nlattr,
     /* uint8_t */
     case QEMU_IFLA_INET6_ADDR_GEN_MODE:
         break;
-    /* abi_ulong */
+    /* target_ulong */
     case QEMU_IFLA_INET6_FLAGS:
         u32 = NLA_DATA(nlattr);
         *u32 = tswap32(*u32);
         break;
-    /* abi_ulong[] */
+    /* target_ulong[] */
     case QEMU_IFLA_INET6_CONF:
         u32 = NLA_DATA(nlattr);
         for (i = 0; i < (nlattr->nla_len - NLA_HDRLEN) / sizeof(*u32);
@@ -2440,12 +2440,12 @@ static abi_long host_to_target_data_inet6_nlattr(struct nlattr *nlattr,
         }
         break;
     default:
-        gemu_log("Unknown host AF_INET6 type: %ld\n", nlattr->nla_type);
+        gemu_log("Unknown host AF_INET6 type: %d\n", nlattr->nla_type);
     }
     return 0;
 }
 
-static abi_long host_to_target_data_spec_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_data_spec_nlattr(struct nlattr *nlattr,
                                                     void *context)
 {
     switch (nlattr->nla_type) {
@@ -2458,36 +2458,36 @@ static abi_long host_to_target_data_spec_nlattr(struct nlattr *nlattr,
                                               NULL,
                                              host_to_target_data_inet6_nlattr);
     default:
-        gemu_log("Unknown host AF_SPEC type: %ld\n", nlattr->nla_type);
+        gemu_log("Unknown host AF_SPEC type: %d\n", nlattr->nla_type);
         break;
     }
     return 0;
 }
 
-static abi_long host_to_target_data_xdp_nlattr(struct nlattr *nlattr,
+static target_long host_to_target_data_xdp_nlattr(struct nlattr *nlattr,
                                                void *context)
 {
-    abi_ulong *u32;
+    target_ulong *u32;
 
     switch (nlattr->nla_type) {
     /* uint8_t */
     case QEMU_IFLA_XDP_ATTACHED:
         break;
-    /* abi_ulong */
+    /* target_ulong */
     case QEMU_IFLA_XDP_PROG_ID:
         u32 = NLA_DATA(nlattr);
         *u32 = tswap32(*u32);
         break;
     default:
-        gemu_log("Unknown host XDP type: %ld\n", nlattr->nla_type);
+        gemu_log("Unknown host XDP type: %d\n", nlattr->nla_type);
         break;
     }
     return 0;
 }
 
-static abi_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
+static target_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
 {
-    abi_ulong *u32;
+    target_ulong *u32;
     struct rtnl_link_stats *st;
     struct rtnl_link_stats64 *st64;
     struct rtnl_link_ifmap *map;
@@ -2507,7 +2507,7 @@ static abi_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
     case QEMU_IFLA_CARRIER:
     case QEMU_IFLA_PROTO_DOWN:
         break;
-    /* abi_ulong */
+    /* target_ulong */
     case QEMU_IFLA_MTU:
     case QEMU_IFLA_LINK:
     case QEMU_IFLA_WEIGHT:
@@ -2617,15 +2617,15 @@ static abi_long host_to_target_data_link_rtattr(struct rtattr *rtattr)
                                               NULL,
                                                 host_to_target_data_xdp_nlattr);
     default:
-        gemu_log("Unknown host QEMU_IFLA type: %ld\n", rtattr->rta_type);
+        gemu_log("Unknown host QEMU_IFLA type: %d\n", rtattr->rta_type);
         break;
     }
     return 0;
 }
 
-static abi_long host_to_target_data_addr_rtattr(struct rtattr *rtattr)
+static target_long host_to_target_data_addr_rtattr(struct rtattr *rtattr)
 {
-    abi_ulong *u32;
+    target_ulong *u32;
     struct ifa_cacheinfo *ci;
 
     switch (rtattr->rta_type) {
@@ -2651,15 +2651,15 @@ static abi_long host_to_target_data_addr_rtattr(struct rtattr *rtattr)
         ci->tstamp = tswap32(ci->tstamp);
         break;
     default:
-        gemu_log("Unknown host IFA type: %ld\n", rtattr->rta_type);
+        gemu_log("Unknown host IFA type: %d\n", rtattr->rta_type);
         break;
     }
     return 0;
 }
 
-static abi_long host_to_target_data_route_rtattr(struct rtattr *rtattr)
+static target_long host_to_target_data_route_rtattr(struct rtattr *rtattr)
 {
-    abi_ulong *u32;
+    target_ulong *u32;
     switch (rtattr->rta_type) {
     /* binary: depends on family type */
     case RTA_GATEWAY:
@@ -2674,36 +2674,36 @@ static abi_long host_to_target_data_route_rtattr(struct rtattr *rtattr)
         *u32 = tswap32(*u32);
         break;
     default:
-        gemu_log("Unknown host RTA type: %ld\n", rtattr->rta_type);
+        gemu_log("Unknown host RTA type: %d\n", rtattr->rta_type);
         break;
     }
     return 0;
 }
 
-static abi_long host_to_target_link_rtattr(struct rtattr *rtattr,
-                                         abi_ulong rtattr_len)
+static target_long host_to_target_link_rtattr(struct rtattr *rtattr,
+                                         target_ulong rtattr_len)
 {
     return host_to_target_for_each_rtattr(rtattr, rtattr_len,
                                           host_to_target_data_link_rtattr);
 }
 
-static abi_long host_to_target_addr_rtattr(struct rtattr *rtattr,
-                                         abi_ulong rtattr_len)
+static target_long host_to_target_addr_rtattr(struct rtattr *rtattr,
+                                         target_ulong rtattr_len)
 {
     return host_to_target_for_each_rtattr(rtattr, rtattr_len,
                                           host_to_target_data_addr_rtattr);
 }
 
-static abi_long host_to_target_route_rtattr(struct rtattr *rtattr,
-                                         abi_ulong rtattr_len)
+static target_long host_to_target_route_rtattr(struct rtattr *rtattr,
+                                         target_ulong rtattr_len)
 {
     return host_to_target_for_each_rtattr(rtattr, rtattr_len,
                                           host_to_target_data_route_rtattr);
 }
 
-static abi_long host_to_target_data_route(struct nlmsghdr *nlh)
+static target_long host_to_target_data_route(struct nlmsghdr *nlh)
 {
-    abi_ulong nlmsg_len;
+    target_ulong nlmsg_len;
     struct ifinfomsg *ifi;
     struct ifaddrmsg *ifa;
     struct rtmsg *rtm;
@@ -2749,18 +2749,18 @@ static abi_long host_to_target_data_route(struct nlmsghdr *nlh)
     return 0;
 }
 
-static inline abi_long host_to_target_nlmsg_route(struct nlmsghdr *nlh,
+static inline target_long host_to_target_nlmsg_route(struct nlmsghdr *nlh,
                                                   size_t len)
 {
     return host_to_target_for_each_nlmsg(nlh, len, host_to_target_data_route);
 }
 
-static abi_long target_to_host_for_each_rtattr(struct rtattr *rtattr,
+static target_long target_to_host_for_each_rtattr(struct rtattr *rtattr,
                                                size_t len,
-                                               abi_long (*target_to_host_rtattr)
+                                               target_long (*target_to_host_rtattr)
                                                         (struct rtattr *))
 {
-    abi_long ret;
+    target_long ret;
 
     while (len >= sizeof(struct rtattr)) {
         if (tswap16(rtattr->rta_len) < sizeof(struct rtattr) ||
@@ -2780,17 +2780,17 @@ static abi_long target_to_host_for_each_rtattr(struct rtattr *rtattr,
     return 0;
 }
 
-static abi_long target_to_host_data_link_rtattr(struct rtattr *rtattr)
+static target_long target_to_host_data_link_rtattr(struct rtattr *rtattr)
 {
     switch (rtattr->rta_type) {
     default:
-        gemu_log("Unknown target QEMU_IFLA type: %ld\n", rtattr->rta_type);
+        gemu_log("Unknown target QEMU_IFLA type: %d\n", rtattr->rta_type);
         break;
     }
     return 0;
 }
 
-static abi_long target_to_host_data_addr_rtattr(struct rtattr *rtattr)
+static target_long target_to_host_data_addr_rtattr(struct rtattr *rtattr)
 {
     switch (rtattr->rta_type) {
     /* binary: depends on family type */
@@ -2798,15 +2798,15 @@ static abi_long target_to_host_data_addr_rtattr(struct rtattr *rtattr)
     case IFA_ADDRESS:
         break;
     default:
-        gemu_log("Unknown target IFA type: %ld\n", rtattr->rta_type);
+        gemu_log("Unknown target IFA type: %d\n", rtattr->rta_type);
         break;
     }
     return 0;
 }
 
-static abi_long target_to_host_data_route_rtattr(struct rtattr *rtattr)
+static target_long target_to_host_data_route_rtattr(struct rtattr *rtattr)
 {
-    abi_ulong *u32;
+    target_ulong *u32;
     switch (rtattr->rta_type) {
     /* binary: depends on family type */
     case RTA_DST:
@@ -2820,34 +2820,34 @@ static abi_long target_to_host_data_route_rtattr(struct rtattr *rtattr)
         *u32 = tswap32(*u32);
         break;
     default:
-        gemu_log("Unknown target RTA type: %ld\n", rtattr->rta_type);
+        gemu_log("Unknown target RTA type: %d\n", rtattr->rta_type);
         break;
     }
     return 0;
 }
 
 static void target_to_host_link_rtattr(struct rtattr *rtattr,
-                                       abi_ulong rtattr_len)
+                                       target_ulong rtattr_len)
 {
     target_to_host_for_each_rtattr(rtattr, rtattr_len,
                                    target_to_host_data_link_rtattr);
 }
 
 static void target_to_host_addr_rtattr(struct rtattr *rtattr,
-                                     abi_ulong rtattr_len)
+                                     target_ulong rtattr_len)
 {
     target_to_host_for_each_rtattr(rtattr, rtattr_len,
                                    target_to_host_data_addr_rtattr);
 }
 
 static void target_to_host_route_rtattr(struct rtattr *rtattr,
-                                     abi_ulong rtattr_len)
+                                     target_ulong rtattr_len)
 {
     target_to_host_for_each_rtattr(rtattr, rtattr_len,
                                    target_to_host_data_route_rtattr);
 }
 
-static abi_long target_to_host_data_route(struct nlmsghdr *nlh)
+static target_long target_to_host_data_route(struct nlmsghdr *nlh)
 {
     struct ifinfomsg *ifi;
     struct ifaddrmsg *ifa;
@@ -2895,30 +2895,30 @@ static abi_long target_to_host_data_route(struct nlmsghdr *nlh)
     return 0;
 }
 
-static abi_long target_to_host_nlmsg_route(struct nlmsghdr *nlh, size_t len)
+static target_long target_to_host_nlmsg_route(struct nlmsghdr *nlh, size_t len)
 {
     return target_to_host_for_each_nlmsg(nlh, len, target_to_host_data_route);
 }
 #endif /* CONFIG_RTNETLINK */
 
-static abi_long host_to_target_data_audit(struct nlmsghdr *nlh)
+static target_long host_to_target_data_audit(struct nlmsghdr *nlh)
 {
     switch (nlh->nlmsg_type) {
     default:
-        gemu_log("Unknown host audit message type %ld\n",
+        gemu_log("Unknown host audit message type %d\n",
                  nlh->nlmsg_type);
         return -TARGET_EINVAL;
     }
     return 0;
 }
 
-static inline abi_long host_to_target_nlmsg_audit(struct nlmsghdr *nlh,
+static inline target_long host_to_target_nlmsg_audit(struct nlmsghdr *nlh,
                                                   size_t len)
 {
     return host_to_target_for_each_nlmsg(nlh, len, host_to_target_data_audit);
 }
 
-static abi_long target_to_host_data_audit(struct nlmsghdr *nlh)
+static target_long target_to_host_data_audit(struct nlmsghdr *nlh)
 {
     switch (nlh->nlmsg_type) {
     case AUDIT_USER:
@@ -2926,7 +2926,7 @@ static abi_long target_to_host_data_audit(struct nlmsghdr *nlh)
     case AUDIT_FIRST_USER_MSG2 ... AUDIT_LAST_USER_MSG2:
         break;
     default:
-        gemu_log("Unknown target audit message type %ld\n",
+        gemu_log("Unknown target audit message type %d\n",
                  nlh->nlmsg_type);
         return -TARGET_EINVAL;
     }
@@ -2934,16 +2934,16 @@ static abi_long target_to_host_data_audit(struct nlmsghdr *nlh)
     return 0;
 }
 
-static abi_long target_to_host_nlmsg_audit(struct nlmsghdr *nlh, size_t len)
+static target_long target_to_host_nlmsg_audit(struct nlmsghdr *nlh, size_t len)
 {
     return target_to_host_for_each_nlmsg(nlh, len, target_to_host_data_audit);
 }
 
 /* do_setsockopt() Must return target values and target errnos. */
-static abi_long do_setsockopt(int sockfd, int level, int optname,
-                              abi_ulong optval_addr, socklen_t optlen)
+static target_long do_setsockopt(int sockfd, int level, int optname,
+                              target_ulong optval_addr, socklen_t optlen)
 {
-    abi_long ret;
+    target_long ret;
     int val;
     struct ip_mreqn *ip_mreq;
     struct ip_mreq_source *ip_mreq_source;
@@ -2951,7 +2951,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
     switch(level) {
     case SOL_TCP:
         /* TCP options all take an 'int' value.  */
-        if (optlen < sizeof(abi_ulong))
+        if (optlen < sizeof(target_ulong))
             return -TARGET_EINVAL;
 
         if (get_user_u32(val, optval_addr))
@@ -2977,7 +2977,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
         case IP_MULTICAST_TTL:
         case IP_MULTICAST_LOOP:
             val = 0;
-            if (optlen >= sizeof(abi_ulong)) {
+            if (optlen >= sizeof(target_ulong)) {
                 if (get_user_u32(val, optval_addr))
                     return -TARGET_EFAULT;
             } else if (optlen >= 1) {
@@ -3027,7 +3027,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
         case IPV6_2292HOPLIMIT:
         case IPV6_CHECKSUM:
             val = 0;
-            if (optlen < sizeof(abi_ulong)) {
+            if (optlen < sizeof(target_ulong)) {
                 return -TARGET_EINVAL;
             }
             if (get_user_u32(val, optval_addr)) {
@@ -3089,7 +3089,7 @@ static abi_long do_setsockopt(int sockfd, int level, int optname,
         case ICMP_FILTER:
         case IPV6_CHECKSUM:
             /* those take an u32 value */
-            if (optlen < sizeof(abi_ulong)) {
+            if (optlen < sizeof(target_ulong)) {
                 return -TARGET_EINVAL;
             }
 
@@ -3254,7 +3254,7 @@ set_timeout:
         default:
             goto unimplemented;
         }
-	if (optlen < sizeof(abi_ulong))
+	if (optlen < sizeof(target_ulong))
             return -TARGET_EINVAL;
 
 	if (get_user_u32(val, optval_addr))
@@ -3263,17 +3263,17 @@ set_timeout:
         break;
     default:
     unimplemented:
-        gemu_log("Unsupported setsockopt level=%ld optname=%ld\n", level, optname);
+        gemu_log("Unsupported setsockopt level=%d optname=%d\n", level, optname);
         ret = -TARGET_ENOPROTOOPT;
     }
     return ret;
 }
 
 /* do_getsockopt() Must return target values and target errnos. */
-static abi_long do_getsockopt(int sockfd, int level, int optname,
-                              abi_ulong optval_addr, abi_ulong optlen)
+static target_long do_getsockopt(int sockfd, int level, int optname,
+                              target_ulong optval_addr, target_ulong optlen)
 {
-    abi_long ret;
+    target_long ret;
     int len, val;
     socklen_t lv;
 
@@ -3449,7 +3449,7 @@ static abi_long do_getsockopt(int sockfd, int level, int optname,
         break;
     default:
     unimplemented:
-        gemu_log("getsockopt level=%ld optname=%ld not yet supported\n",
+        gemu_log("getsockopt level=%d optname=%d not yet supported\n",
                  level, optname);
         ret = -TARGET_EOPNOTSUPP;
         break;
@@ -3461,8 +3461,8 @@ static abi_long do_getsockopt(int sockfd, int level, int optname,
  * low/high pair. This function doesn't handle offsets bigger than 64 bits
  * as the kernel doesn't handle them either.
  */
-static void target_to_host_low_high(abi_ulong tlow,
-                                    abi_ulong thigh,
+static void target_to_host_low_high(target_ulong tlow,
+                                    target_ulong thigh,
                                     unsigned long *hlow,
                                     unsigned long *hhigh)
 {
@@ -3474,12 +3474,12 @@ static void target_to_host_low_high(abi_ulong tlow,
     *hhigh = (off >> HOST_LONG_BITS / 2) >> HOST_LONG_BITS / 2;
 }
 
-static struct iovec *lock_iovec(int type, abi_ulong target_addr,
-                                abi_ulong count, int copy)
+static struct iovec *lock_iovec(int type, target_ulong target_addr,
+                                target_ulong count, int copy)
 {
     struct target_iovec *target_vec;
     struct iovec *vec;
-    abi_ulong total_len, max_len;
+    target_ulong total_len, max_len;
     int i;
     int err = 0;
     bool bad_address = false;
@@ -3512,8 +3512,8 @@ static struct iovec *lock_iovec(int type, abi_ulong target_addr,
     total_len = 0;
 
     for (i = 0; i < count; i++) {
-        abi_ulong base = tswapal(target_vec[i].iov_base);
-        abi_long len = tswapal(target_vec[i].iov_len);
+        target_ulong base = tswapal(target_vec[i].iov_base);
+        target_long len = tswapal(target_vec[i].iov_len);
 
         if (len < 0) {
             err = EINVAL;
@@ -3562,8 +3562,8 @@ static struct iovec *lock_iovec(int type, abi_ulong target_addr,
     return NULL;
 }
 
-static void unlock_iovec(struct iovec *vec, abi_ulong target_addr,
-                         abi_ulong count, int copy)
+static void unlock_iovec(struct iovec *vec, target_ulong target_addr,
+                         target_ulong count, int copy)
 {
     struct target_iovec *target_vec;
     int i;
@@ -3572,8 +3572,8 @@ static void unlock_iovec(struct iovec *vec, abi_ulong target_addr,
                            count * sizeof(struct target_iovec), 1);
     if (target_vec) {
         for (i = 0; i < count; i++) {
-            abi_ulong base = tswapal(target_vec[i].iov_base);
-            abi_long len = tswapal(target_vec[i].iov_len);
+            target_ulong base = tswapal(target_vec[i].iov_base);
+            target_long len = tswapal(target_vec[i].iov_len);
             if (len < 0) {
                 break;
             }
@@ -3634,8 +3634,8 @@ static int sock_flags_fixup(int fd, int target_type)
     return fd;
 }
 
-static abi_long packet_target_to_host_sockaddr(void *host_addr,
-                                               abi_ulong target_addr,
+static target_long packet_target_to_host_sockaddr(void *host_addr,
+                                               target_ulong target_addr,
                                                socklen_t len)
 {
     struct sockaddr *addr = host_addr;
@@ -3659,9 +3659,9 @@ static TargetFdTrans target_packet_trans = {
 };
 
 #ifdef CONFIG_RTNETLINK
-static abi_long netlink_route_target_to_host(void *buf, size_t len)
+static target_long netlink_route_target_to_host(void *buf, size_t len)
 {
-    abi_long ret;
+    target_long ret;
 
     ret = target_to_host_nlmsg_route(buf, len);
     if (ret < 0) {
@@ -3671,9 +3671,9 @@ static abi_long netlink_route_target_to_host(void *buf, size_t len)
     return len;
 }
 
-static abi_long netlink_route_host_to_target(void *buf, size_t len)
+static target_long netlink_route_host_to_target(void *buf, size_t len)
 {
-    abi_long ret;
+    target_long ret;
 
     ret = host_to_target_nlmsg_route(buf, len);
     if (ret < 0) {
@@ -3689,9 +3689,9 @@ static TargetFdTrans target_netlink_route_trans = {
 };
 #endif /* CONFIG_RTNETLINK */
 
-static abi_long netlink_audit_target_to_host(void *buf, size_t len)
+static target_long netlink_audit_target_to_host(void *buf, size_t len)
 {
-    abi_long ret;
+    target_long ret;
 
     ret = target_to_host_nlmsg_audit(buf, len);
     if (ret < 0) {
@@ -3701,9 +3701,9 @@ static abi_long netlink_audit_target_to_host(void *buf, size_t len)
     return len;
 }
 
-static abi_long netlink_audit_host_to_target(void *buf, size_t len)
+static target_long netlink_audit_host_to_target(void *buf, size_t len)
 {
-    abi_long ret;
+    target_long ret;
 
     ret = host_to_target_nlmsg_audit(buf, len);
     if (ret < 0) {
@@ -3719,7 +3719,7 @@ static TargetFdTrans target_netlink_audit_trans = {
 };
 
 /* do_socket() Must return target values and target errnos. */
-static abi_long do_socket(int domain, int type, int protocol)
+static target_long do_socket(int domain, int type, int protocol)
 {
     int target_type = type;
     int ret;
@@ -3773,11 +3773,11 @@ static abi_long do_socket(int domain, int type, int protocol)
 }
 
 /* do_bind() Must return target values and target errnos. */
-static abi_long do_bind(int sockfd, abi_ulong target_addr,
+static target_long do_bind(int sockfd, target_ulong target_addr,
                         socklen_t addrlen)
 {
     void *addr;
-    abi_long ret;
+    target_long ret;
 
     if ((int)addrlen < 0) {
         return -TARGET_EINVAL;
@@ -3793,11 +3793,11 @@ static abi_long do_bind(int sockfd, abi_ulong target_addr,
 }
 
 /* do_connect() Must return target values and target errnos. */
-static abi_long do_connect(int sockfd, abi_ulong target_addr,
+static target_long do_connect(int sockfd, target_ulong target_addr,
                            socklen_t addrlen)
 {
     void *addr;
-    abi_long ret;
+    target_long ret;
 
     if ((int)addrlen < 0) {
         return -TARGET_EINVAL;
@@ -3813,14 +3813,14 @@ static abi_long do_connect(int sockfd, abi_ulong target_addr,
 }
 
 /* do_sendrecvmsg_locked() Must return target values and target errnos. */
-static abi_long do_sendrecvmsg_locked(int fd, struct target_msghdr *msgp,
+static target_long do_sendrecvmsg_locked(int fd, struct target_msghdr *msgp,
                                       int flags, int send)
 {
-    abi_long ret, len;
+    target_long ret, len;
     struct msghdr msg;
-    abi_ulong count;
+    target_ulong count;
     struct iovec *vec;
-    abi_ulong target_vec;
+    target_ulong target_vec;
 
     if (msgp->msg_name) {
         msg.msg_namelen = tswap32(msgp->msg_namelen);
@@ -3918,10 +3918,10 @@ out2:
     return ret;
 }
 
-static abi_long do_sendrecvmsg(int fd, abi_ulong target_msg,
+static target_long do_sendrecvmsg(int fd, target_ulong target_msg,
                                int flags, int send)
 {
-    abi_long ret;
+    target_long ret;
     struct target_msghdr *msgp;
 
     if (!lock_user_struct(send ? VERIFY_READ : VERIFY_WRITE,
@@ -3942,12 +3942,12 @@ static abi_long do_sendrecvmsg(int fd, abi_ulong target_msg,
 #define MSG_WAITFORONE 0x10000
 #endif
 
-static abi_long do_sendrecvmmsg(int fd, abi_ulong target_msgvec,
+static target_long do_sendrecvmmsg(int fd, target_ulong target_msgvec,
                                 unsigned int vlen, unsigned int flags,
                                 int send)
 {
     struct target_mmsghdr *mmsgp;
-    abi_long ret = 0;
+    target_long ret = 0;
     int i;
 
     if (vlen > UIO_MAXIOV) {
@@ -3983,12 +3983,12 @@ static abi_long do_sendrecvmmsg(int fd, abi_ulong target_msgvec,
 }
 
 /* do_accept4() Must return target values and target errnos. */
-static abi_long do_accept4(int fd, abi_ulong target_addr,
-                           abi_ulong target_addrlen_addr, int flags)
+static target_long do_accept4(int fd, target_ulong target_addr,
+                           target_ulong target_addrlen_addr, int flags)
 {
     socklen_t addrlen;
     void *addr;
-    abi_long ret;
+    target_long ret;
     int host_flags;
 
     host_flags = target_to_host_bitmask(flags, fcntl_flags_tbl);
@@ -4020,12 +4020,12 @@ static abi_long do_accept4(int fd, abi_ulong target_addr,
 }
 
 /* do_getpeername() Must return target values and target errnos. */
-static abi_long do_getpeername(int fd, abi_ulong target_addr,
-                               abi_ulong target_addrlen_addr)
+static target_long do_getpeername(int fd, target_ulong target_addr,
+                               target_ulong target_addrlen_addr)
 {
     socklen_t addrlen;
     void *addr;
-    abi_long ret;
+    target_long ret;
 
     if (get_user_u32(addrlen, target_addrlen_addr))
         return -TARGET_EFAULT;
@@ -4049,12 +4049,12 @@ static abi_long do_getpeername(int fd, abi_ulong target_addr,
 }
 
 /* do_getsockname() Must return target values and target errnos. */
-static abi_long do_getsockname(int fd, abi_ulong target_addr,
-                               abi_ulong target_addrlen_addr)
+static target_long do_getsockname(int fd, target_ulong target_addr,
+                               target_ulong target_addrlen_addr)
 {
     socklen_t addrlen;
     void *addr;
-    abi_long ret;
+    target_long ret;
 
     if (get_user_u32(addrlen, target_addrlen_addr))
         return -TARGET_EFAULT;
@@ -4078,11 +4078,11 @@ static abi_long do_getsockname(int fd, abi_ulong target_addr,
 }
 
 /* do_socketpair() Must return target values and target errnos. */
-static abi_long do_socketpair(int domain, int type, int protocol,
-                              abi_ulong target_tab_addr)
+static target_long do_socketpair(int domain, int type, int protocol,
+                              target_ulong target_tab_addr)
 {
     int tab[2];
-    abi_long ret;
+    target_long ret;
 
     target_to_host_sock_type(&type);
 
@@ -4096,13 +4096,13 @@ static abi_long do_socketpair(int domain, int type, int protocol,
 }
 
 /* do_sendto() Must return target values and target errnos. */
-static abi_long do_sendto(int fd, abi_ulong msg, size_t len, int flags,
-                          abi_ulong target_addr, socklen_t addrlen)
+static target_long do_sendto(int fd, target_ulong msg, size_t len, int flags,
+                          target_ulong target_addr, socklen_t addrlen)
 {
     void *addr;
     void *host_msg;
     void *copy_msg = NULL;
-    abi_long ret;
+    target_long ret;
 
     if ((int)addrlen < 0) {
         return -TARGET_EINVAL;
@@ -4140,14 +4140,14 @@ fail:
 }
 
 /* do_recvfrom() Must return target values and target errnos. */
-static abi_long do_recvfrom(int fd, abi_ulong msg, size_t len, int flags,
-                            abi_ulong target_addr,
-                            abi_ulong target_addrlen)
+static target_long do_recvfrom(int fd, target_ulong msg, size_t len, int flags,
+                            target_ulong target_addr,
+                            target_ulong target_addrlen)
 {
     socklen_t addrlen;
     void *addr;
     void *host_msg;
-    abi_long ret;
+    target_long ret;
 
     host_msg = lock_user(VERIFY_WRITE, msg, len, 0);
     if (!host_msg)
@@ -4189,7 +4189,7 @@ fail:
 
 #ifdef TARGET_NR_socketcall
 /* do_socketcall() must return target values and target errnos. */
-static abi_long do_socketcall(int num, abi_ulong vptr)
+static target_long do_socketcall(int num, target_ulong vptr)
 {
     static const unsigned nargs[] = { /* number of arguments per operation */
         [TARGET_SYS_SOCKET] = 3,      /* domain, type, protocol */
@@ -4213,7 +4213,7 @@ static abi_long do_socketcall(int num, abi_ulong vptr)
         [TARGET_SYS_RECVMMSG] = 4,    /* fd, msgvec, vlen, flags */
         [TARGET_SYS_SENDMMSG] = 4,    /* fd, msgvec, vlen, flags */
     };
-    abi_long a[6]; /* max 6 args */
+    target_long a[6]; /* max 6 args */
     unsigned i;
 
     /* check the range of the first argument num */
@@ -4227,7 +4227,7 @@ static abi_long do_socketcall(int num, abi_ulong vptr)
     }
     /* collect the arguments in a[] according to nargs[] */
     for (i = 0; i < nargs[num]; ++i) {
-        if (get_user_ual(a[i], vptr + i * sizeof(abi_long)) != 0) {
+        if (get_user_ual(a[i], vptr + i * sizeof(target_long)) != 0) {
             return -TARGET_EFAULT;
         }
     }
@@ -4274,7 +4274,7 @@ static abi_long do_socketcall(int num, abi_ulong vptr)
     case TARGET_SYS_SENDMMSG: /* sockfd, msgvec, vlen, flags */
         return do_sendrecvmmsg(a[0], a[1], a[2], a[3], 1);
     default:
-        gemu_log("Unsupported socketcall: %ld\n", num);
+        gemu_log("Unsupported socketcall: %d\n", num);
         return -TARGET_EINVAL;
     }
 }
@@ -4283,8 +4283,8 @@ static abi_long do_socketcall(int num, abi_ulong vptr)
 #define N_SHM_REGIONS	32
 
 static struct shm_region {
-    abi_ulong start;
-    abi_ulong size;
+    target_ulong start;
+    target_ulong size;
     bool in_use;
 } shm_regions[N_SHM_REGIONS];
 
@@ -4293,22 +4293,22 @@ static struct shm_region {
 struct target_semid64_ds
 {
   struct target_ipc_perm sem_perm;
-  abi_ulong sem_otime;
+  target_ulong sem_otime;
 #if TARGET_ABI_BITS == 32
-  abi_ulong __unused1;
+  target_ulong __unused1;
 #endif
-  abi_ulong sem_ctime;
+  target_ulong sem_ctime;
 #if TARGET_ABI_BITS == 32
-  abi_ulong __unused2;
+  target_ulong __unused2;
 #endif
-  abi_ulong sem_nsems;
-  abi_ulong __unused3;
-  abi_ulong __unused4;
+  target_ulong sem_nsems;
+  target_ulong __unused3;
+  target_ulong __unused4;
 };
 #endif
 
-static inline abi_long target_to_host_ipc_perm(struct ipc_perm *host_ip,
-                                               abi_ulong target_addr)
+static inline target_long target_to_host_ipc_perm(struct ipc_perm *host_ip,
+                                               target_ulong target_addr)
 {
     struct target_ipc_perm *target_ip;
     struct target_semid64_ds *target_sd;
@@ -4335,7 +4335,7 @@ static inline abi_long target_to_host_ipc_perm(struct ipc_perm *host_ip,
     return 0;
 }
 
-static inline abi_long host_to_target_ipc_perm(abi_ulong target_addr,
+static inline target_long host_to_target_ipc_perm(target_ulong target_addr,
                                                struct ipc_perm *host_ip)
 {
     struct target_ipc_perm *target_ip;
@@ -4363,8 +4363,8 @@ static inline abi_long host_to_target_ipc_perm(abi_ulong target_addr,
     return 0;
 }
 
-static inline abi_long target_to_host_semid_ds(struct semid_ds *host_sd,
-                                               abi_ulong target_addr)
+static inline target_long target_to_host_semid_ds(struct semid_ds *host_sd,
+                                               target_ulong target_addr)
 {
     struct target_semid64_ds *target_sd;
 
@@ -4379,7 +4379,7 @@ static inline abi_long target_to_host_semid_ds(struct semid_ds *host_sd,
     return 0;
 }
 
-static inline abi_long host_to_target_semid_ds(abi_ulong target_addr,
+static inline target_long host_to_target_semid_ds(target_ulong target_addr,
                                                struct semid_ds *host_sd)
 {
     struct target_semid64_ds *target_sd;
@@ -4408,7 +4408,7 @@ struct target_seminfo {
     int semaem;
 };
 
-static inline abi_long host_to_target_seminfo(abi_ulong target_addr,
+static inline target_long host_to_target_seminfo(target_ulong target_addr,
                                               struct seminfo *host_seminfo)
 {
     struct target_seminfo *target_seminfo;
@@ -4437,13 +4437,13 @@ union semun {
 
 union target_semun {
 	int val;
-	abi_ulong buf;
-	abi_ulong array;
-	abi_ulong __buf;
+	target_ulong buf;
+	target_ulong array;
+	target_ulong __buf;
 };
 
-static inline abi_long target_to_host_semarray(int semid, unsigned short **host_array,
-                                               abi_ulong target_addr)
+static inline target_long target_to_host_semarray(int semid, unsigned short **host_array,
+                                               target_ulong target_addr)
 {
     int nsems;
     unsigned short *array;
@@ -4478,7 +4478,7 @@ static inline abi_long target_to_host_semarray(int semid, unsigned short **host_
     return 0;
 }
 
-static inline abi_long host_to_target_semarray(int semid, abi_ulong target_addr,
+static inline target_long host_to_target_semarray(int semid, target_ulong target_addr,
                                                unsigned short **host_array)
 {
     int nsems;
@@ -4509,16 +4509,16 @@ static inline abi_long host_to_target_semarray(int semid, abi_ulong target_addr,
     return 0;
 }
 
-static inline abi_long do_semctl(int semid, int semnum, int cmd,
-                                 abi_ulong target_arg)
+static inline target_long do_semctl(int semid, int semnum, int cmd,
+                                 target_ulong target_arg)
 {
     union target_semun target_su = { .buf = target_arg };
     union semun arg;
     struct semid_ds dsarg;
     unsigned short *array = NULL;
     struct seminfo seminfo;
-    abi_long ret = -TARGET_EINVAL;
-    abi_long err;
+    target_long ret = -TARGET_EINVAL;
+    target_long err;
     cmd &= 0xff;
 
     switch( cmd ) {
@@ -4585,8 +4585,8 @@ struct target_sembuf {
     short sem_flg;
 };
 
-static inline abi_long target_to_host_sembuf(struct sembuf *host_sembuf,
-                                             abi_ulong target_addr,
+static inline target_long target_to_host_sembuf(struct sembuf *host_sembuf,
+                                             target_ulong target_addr,
                                              unsigned nsops)
 {
     struct target_sembuf *target_sembuf;
@@ -4608,7 +4608,7 @@ static inline abi_long target_to_host_sembuf(struct sembuf *host_sembuf,
     return 0;
 }
 
-static inline abi_long do_semop(int semid, abi_long ptr, unsigned nsops)
+static inline target_long do_semop(int semid, target_long ptr, unsigned nsops)
 {
     struct sembuf sops[nsops];
 
@@ -4621,29 +4621,29 @@ static inline abi_long do_semop(int semid, abi_long ptr, unsigned nsops)
 struct target_msqid_ds
 {
     struct target_ipc_perm msg_perm;
-    abi_ulong msg_stime;
+    target_ulong msg_stime;
 #if TARGET_ABI_BITS == 32
-    abi_ulong __unused1;
+    target_ulong __unused1;
 #endif
-    abi_ulong msg_rtime;
+    target_ulong msg_rtime;
 #if TARGET_ABI_BITS == 32
-    abi_ulong __unused2;
+    target_ulong __unused2;
 #endif
-    abi_ulong msg_ctime;
+    target_ulong msg_ctime;
 #if TARGET_ABI_BITS == 32
-    abi_ulong __unused3;
+    target_ulong __unused3;
 #endif
-    abi_ulong __msg_cbytes;
-    abi_ulong msg_qnum;
-    abi_ulong msg_qbytes;
-    abi_ulong msg_lspid;
-    abi_ulong msg_lrpid;
-    abi_ulong __unused4;
-    abi_ulong __unused5;
+    target_ulong __msg_cbytes;
+    target_ulong msg_qnum;
+    target_ulong msg_qbytes;
+    target_ulong msg_lspid;
+    target_ulong msg_lrpid;
+    target_ulong __unused4;
+    target_ulong __unused5;
 };
 
-static inline abi_long target_to_host_msqid_ds(struct msqid_ds *host_md,
-                                               abi_ulong target_addr)
+static inline target_long target_to_host_msqid_ds(struct msqid_ds *host_md,
+                                               target_ulong target_addr)
 {
     struct target_msqid_ds *target_md;
 
@@ -4663,7 +4663,7 @@ static inline abi_long target_to_host_msqid_ds(struct msqid_ds *host_md,
     return 0;
 }
 
-static inline abi_long host_to_target_msqid_ds(abi_ulong target_addr,
+static inline target_long host_to_target_msqid_ds(target_ulong target_addr,
                                                struct msqid_ds *host_md)
 {
     struct target_msqid_ds *target_md;
@@ -4695,7 +4695,7 @@ struct target_msginfo {
     unsigned short int msgseg;
 };
 
-static inline abi_long host_to_target_msginfo(abi_ulong target_addr,
+static inline target_long host_to_target_msginfo(target_ulong target_addr,
                                               struct msginfo *host_msginfo)
 {
     struct target_msginfo *target_msginfo;
@@ -4713,11 +4713,11 @@ static inline abi_long host_to_target_msginfo(abi_ulong target_addr,
     return 0;
 }
 
-static inline abi_long do_msgctl(int msgid, int cmd, abi_long ptr)
+static inline target_long do_msgctl(int msgid, int cmd, target_long ptr)
 {
     struct msqid_ds dsarg;
     struct msginfo msginfo;
-    abi_long ret = -TARGET_EINVAL;
+    target_long ret = -TARGET_EINVAL;
 
     cmd &= 0xff;
 
@@ -4746,16 +4746,16 @@ static inline abi_long do_msgctl(int msgid, int cmd, abi_long ptr)
 }
 
 struct target_msgbuf {
-    abi_long mtype;
+    target_long mtype;
     char	mtext[1];
 };
 
-static inline abi_long do_msgsnd(int msqid, abi_long msgp,
+static inline target_long do_msgsnd(int msqid, target_long msgp,
                                  ssize_t msgsz, int msgflg)
 {
     struct target_msgbuf *target_mb;
     struct msgbuf *host_mb;
-    abi_long ret = 0;
+    target_long ret = 0;
 
     if (msgsz < 0) {
         return -TARGET_EINVAL;
@@ -4768,7 +4768,7 @@ static inline abi_long do_msgsnd(int msqid, abi_long msgp,
         unlock_user_struct(target_mb, msgp, 0);
         return -TARGET_ENOMEM;
     }
-    host_mb->mtype = (abi_long) tswapal(target_mb->mtype);
+    host_mb->mtype = (target_long) tswapal(target_mb->mtype);
     memcpy(host_mb->mtext, target_mb->mtext, msgsz);
     ret = get_errno(safe_msgsnd(msqid, host_mb, msgsz, msgflg));
     g_free(host_mb);
@@ -4777,14 +4777,14 @@ static inline abi_long do_msgsnd(int msqid, abi_long msgp,
     return ret;
 }
 
-static inline abi_long do_msgrcv(int msqid, abi_long msgp,
-                                 ssize_t msgsz, abi_long msgtyp,
+static inline target_long do_msgrcv(int msqid, target_long msgp,
+                                 ssize_t msgsz, target_long msgtyp,
                                  int msgflg)
 {
     struct target_msgbuf *target_mb;
     char *target_mtext;
     struct msgbuf *host_mb;
-    abi_long ret = 0;
+    target_long ret = 0;
 
     if (msgsz < 0) {
         return -TARGET_EINVAL;
@@ -4801,7 +4801,7 @@ static inline abi_long do_msgrcv(int msqid, abi_long msgp,
     ret = get_errno(safe_msgrcv(msqid, host_mb, msgsz, msgtyp, msgflg));
 
     if (ret > 0) {
-        abi_ulong target_mtext_addr = msgp + sizeof(abi_ulong);
+        target_ulong target_mtext_addr = msgp + sizeof(target_ulong);
         target_mtext = lock_user(VERIFY_WRITE, target_mtext_addr, ret, 0);
         if (!target_mtext) {
             ret = -TARGET_EFAULT;
@@ -4820,8 +4820,8 @@ end:
     return ret;
 }
 
-static inline abi_long target_to_host_shmid_ds(struct shmid_ds *host_sd,
-                                               abi_ulong target_addr)
+static inline target_long target_to_host_shmid_ds(struct shmid_ds *host_sd,
+                                               target_ulong target_addr)
 {
     struct target_shmid_ds *target_sd;
 
@@ -4840,7 +4840,7 @@ static inline abi_long target_to_host_shmid_ds(struct shmid_ds *host_sd,
     return 0;
 }
 
-static inline abi_long host_to_target_shmid_ds(abi_ulong target_addr,
+static inline target_long host_to_target_shmid_ds(target_ulong target_addr,
                                                struct shmid_ds *host_sd)
 {
     struct target_shmid_ds *target_sd;
@@ -4861,14 +4861,14 @@ static inline abi_long host_to_target_shmid_ds(abi_ulong target_addr,
 }
 
 struct  target_shminfo {
-    abi_ulong shmmax;
-    abi_ulong shmmin;
-    abi_ulong shmmni;
-    abi_ulong shmseg;
-    abi_ulong shmall;
+    target_ulong shmmax;
+    target_ulong shmmin;
+    target_ulong shmmni;
+    target_ulong shmseg;
+    target_ulong shmall;
 };
 
-static inline abi_long host_to_target_shminfo(abi_ulong target_addr,
+static inline target_long host_to_target_shminfo(target_ulong target_addr,
                                               struct shminfo *host_shminfo)
 {
     struct target_shminfo *target_shminfo;
@@ -4885,14 +4885,14 @@ static inline abi_long host_to_target_shminfo(abi_ulong target_addr,
 
 struct target_shm_info {
     int used_ids;
-    abi_ulong shm_tot;
-    abi_ulong shm_rss;
-    abi_ulong shm_swp;
-    abi_ulong swap_attempts;
-    abi_ulong swap_successes;
+    target_ulong shm_tot;
+    target_ulong shm_rss;
+    target_ulong shm_swp;
+    target_ulong swap_attempts;
+    target_ulong swap_successes;
 };
 
-static inline abi_long host_to_target_shm_info(abi_ulong target_addr,
+static inline target_long host_to_target_shm_info(target_ulong target_addr,
                                                struct shm_info *host_shm_info)
 {
     struct target_shm_info *target_shm_info;
@@ -4908,12 +4908,12 @@ static inline abi_long host_to_target_shm_info(abi_ulong target_addr,
     return 0;
 }
 
-static inline abi_long do_shmctl(int shmid, int cmd, abi_long buf)
+static inline target_long do_shmctl(int shmid, int cmd, target_long buf)
 {
     struct shmid_ds dsarg;
     struct shminfo shminfo;
     struct shm_info shm_info;
-    abi_long ret = -TARGET_EINVAL;
+    target_long ret = -TARGET_EINVAL;
 
     cmd &= 0xff;
 
@@ -4961,20 +4961,20 @@ static inline abi_long do_shmctl(int shmid, int cmd, abi_long buf)
  * as long as they are at least page-aligned. Since the only architecture
  * which uses this is ia64 this code doesn't provide for that oddity.
  */
-static inline abi_ulong target_shmlba(CPUArchState *cpu_env)
+static inline target_ulong target_shmlba(CPUArchState *cpu_env)
 {
     return TARGET_PAGE_SIZE;
 }
 #endif
 
-static inline abi_ulong do_shmat(CPUArchState *cpu_env,
-                                 int shmid, abi_ulong shmaddr, int shmflg)
+static inline target_ulong do_shmat(CPUArchState *cpu_env,
+                                 int shmid, target_ulong shmaddr, int shmflg)
 {
-    abi_long raddr;
+    target_long raddr;
     void *host_raddr;
     struct shmid_ds shm_info;
     int i,ret;
-    abi_ulong shmlba;
+    target_ulong shmlba;
 
     /* find out the length of the shared memory segment */
     ret = get_errno(shmctl(shmid, IPC_STAT, &shm_info));
@@ -5001,7 +5001,7 @@ static inline abi_ulong do_shmat(CPUArchState *cpu_env,
     if (shmaddr)
         host_raddr = shmat(shmid, (void *)g2h(shmaddr), shmflg);
     else {
-        abi_ulong mmap_start;
+        target_ulong mmap_start;
 
         mmap_start = mmap_find_vma(0, shm_info.shm_segsz);
 
@@ -5036,10 +5036,10 @@ static inline abi_ulong do_shmat(CPUArchState *cpu_env,
 
 }
 
-static inline abi_long do_shmdt(abi_ulong shmaddr)
+static inline target_long do_shmdt(target_ulong shmaddr)
 {
     int i;
-    abi_long rv;
+    target_long rv;
 
     mmap_lock();
 
@@ -5060,13 +5060,13 @@ static inline abi_long do_shmdt(abi_ulong shmaddr)
 #ifdef TARGET_NR_ipc
 /* ??? This only works with linear mappings.  */
 /* do_ipc() must return target values and target errnos. */
-static abi_long do_ipc(CPUArchState *cpu_env,
-                       unsigned int call, abi_long first,
-                       abi_long second, abi_long third,
-                       abi_long ptr, abi_long fifth)
+static target_long do_ipc(CPUArchState *cpu_env,
+                       unsigned int call, target_long first,
+                       target_long second, target_long third,
+                       target_long ptr, target_long fifth)
 {
     int version;
-    abi_long ret = 0;
+    target_long ret = 0;
 
     version = call >> 16;
     call &= 0xffff;
@@ -5083,7 +5083,7 @@ static abi_long do_ipc(CPUArchState *cpu_env,
     case IPCOP_semctl: {
         /* The semun argument to semctl is passed by value, so dereference the
          * ptr argument. */
-        abi_ulong atptr;
+        target_ulong atptr;
         get_user_ual(atptr, ptr);
         ret = do_semctl(first, second, third, atptr);
         break;
@@ -5106,8 +5106,8 @@ static abi_long do_ipc(CPUArchState *cpu_env,
         case 0:
             {
                 struct target_ipc_kludge {
-                    abi_long msgp;
-                    abi_long msgtyp;
+                    target_long msgp;
+                    target_long msgtyp;
                 } *tmp;
 
                 if (!lock_user_struct(VERIFY_READ, tmp, ptr, 1)) {
@@ -5129,7 +5129,7 @@ static abi_long do_ipc(CPUArchState *cpu_env,
         switch (version) {
         default:
         {
-            abi_ulong raddr;
+            target_ulong raddr;
             raddr = do_shmat(cpu_env, first, ptr, second);
             if (is_error(raddr))
                 return get_errno(raddr);
@@ -5156,7 +5156,7 @@ static abi_long do_ipc(CPUArchState *cpu_env,
         ret = do_shmctl(first, second, ptr);
         break;
     default:
-	gemu_log("Unsupported ipc call: %ld (version %ld)\n", call, version);
+	gemu_log("Unsupported ipc call: %d (version %d)\n", call, version);
 	ret = -TARGET_ENOSYS;
 	break;
     }
@@ -5183,8 +5183,8 @@ STRUCT_MAX
 
 typedef struct IOCTLEntry IOCTLEntry;
 
-typedef abi_long do_ioctl_fn(const IOCTLEntry *ie, uint8_t *buf_temp,
-                             int fd, int cmd, abi_long arg);
+typedef target_long do_ioctl_fn(const IOCTLEntry *ie, uint8_t *buf_temp,
+                             int fd, int cmd, target_long arg);
 
 struct IOCTLEntry {
     int target_cmd;
@@ -5209,8 +5209,8 @@ struct IOCTLEntry {
 #define FIEMAP_MAX_EXTENTS ((UINT_MAX - sizeof(struct fiemap))  \
                             / sizeof(struct fiemap_extent))
 
-static abi_long do_ioctl_fs_ioc_fiemap(const IOCTLEntry *ie, uint8_t *buf_temp,
-                                       int fd, int cmd, abi_long arg)
+static target_long do_ioctl_fs_ioc_fiemap(const IOCTLEntry *ie, uint8_t *buf_temp,
+                                       int fd, int cmd, target_long arg)
 {
     /* The parameter for this ioctl is a struct fiemap followed
      * by an array of struct fiemap_extent whose size is set
@@ -5222,9 +5222,9 @@ static abi_long do_ioctl_fs_ioc_fiemap(const IOCTLEntry *ie, uint8_t *buf_temp,
     const argtype *arg_type = ie->arg_type;
     const argtype extent_arg_type[] = { MK_STRUCT(STRUCT_fiemap_extent) };
     void *argptr, *p;
-    abi_long ret;
+    target_long ret;
     int i, extent_size = thunk_type_size(extent_arg_type, 0);
-    abi_ulong outbufsz;
+    target_ulong outbufsz;
     int free_fm = 0;
 
     assert(arg_type[0] == TYPE_PTR);
@@ -5290,22 +5290,22 @@ static abi_long do_ioctl_fs_ioc_fiemap(const IOCTLEntry *ie, uint8_t *buf_temp,
 }
 #endif
 
-static abi_long do_ioctl_ifconf(const IOCTLEntry *ie, uint8_t *buf_temp,
-                                int fd, int cmd, abi_long arg)
+static target_long do_ioctl_ifconf(const IOCTLEntry *ie, uint8_t *buf_temp,
+                                int fd, int cmd, target_long arg)
 {
     const argtype *arg_type = ie->arg_type;
     int target_size;
     void *argptr;
     int ret;
     struct ifconf *host_ifconf;
-    abi_ulong outbufsz;
+    target_ulong outbufsz;
     const argtype ifreq_arg_type[] = { MK_STRUCT(STRUCT_sockaddr_ifreq) };
     int target_ifreq_size;
     int nb_ifreq;
     int free_buf = 0;
     int i;
     int target_ifc_len;
-    abi_long target_ifc_buf;
+    target_long target_ifc_buf;
     int host_ifc_len;
     char *host_ifc_buf;
 
@@ -5323,7 +5323,7 @@ static abi_long do_ioctl_ifconf(const IOCTLEntry *ie, uint8_t *buf_temp,
 
     host_ifconf = (struct ifconf *)(unsigned long)buf_temp;
     target_ifc_len = host_ifconf->ifc_len;
-    target_ifc_buf = (abi_long)(unsigned long)host_ifconf->ifc_buf;
+    target_ifc_buf = (target_long)(unsigned long)host_ifconf->ifc_buf;
 
     target_ifreq_size = thunk_type_size(ifreq_arg_type, 0);
     nb_ifreq = target_ifc_len / target_ifreq_size;
@@ -5384,16 +5384,16 @@ static abi_long do_ioctl_ifconf(const IOCTLEntry *ie, uint8_t *buf_temp,
     return ret;
 }
 
-static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
-                            int cmd, abi_long arg)
+static target_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
+                            int cmd, target_long arg)
 {
     void *argptr;
     struct dm_ioctl *host_dm;
-    abi_long guest_data;
-    abi_ulong guest_data_size;
+    target_long guest_data;
+    target_ulong guest_data_size;
     int target_size;
     const argtype *arg_type = ie->arg_type;
-    abi_long ret;
+    target_long ret;
     void *big_buf = NULL;
     char *host_data;
 
@@ -5460,7 +5460,7 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
 
         for (i = 0; i < host_dm->target_count; i++) {
             struct dm_target_spec *spec = cur_data;
-            abi_ulong next;
+            target_ulong next;
             int slen;
 
             thunk_convert(spec, gspec, arg_type, THUNK_HOST);
@@ -5501,13 +5501,13 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
         case DM_LIST_DEVICES:
         {
             struct dm_name_list *nl = (void*)host_dm + host_dm->data_start;
-            abi_ulong remaining_data = guest_data_size;
+            target_ulong remaining_data = guest_data_size;
             void *cur_data = argptr;
             const argtype arg_type[] = { MK_STRUCT(STRUCT_dm_name_list) };
             int nl_size = 12; /* can't use thunk_size due to alignment */
 
             while (1) {
-                abi_ulong next = nl->next;
+                target_ulong next = nl->next;
                 if (next) {
                     nl->next = nl_size + (strlen(nl->name) + 1);
                 }
@@ -5536,7 +5536,7 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
             int i;
 
             for (i = 0; i < host_dm->target_count; i++) {
-                abi_ulong next = spec->next;
+                target_ulong next = spec->next;
                 int slen = strlen((char*)&spec[1]) + 1;
                 spec->next = (cur_data - argptr) + spec_size + slen;
                 if (guest_data_size < spec->next) {
@@ -5553,12 +5553,12 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
         case DM_TABLE_DEPS:
         {
             void *hdata = (void*)host_dm + host_dm->data_start;
-            int count = *(abi_ulong*)hdata;
+            int count = *(target_ulong*)hdata;
             uint64_t *hdev = hdata + 8;
             uint64_t *gdev = argptr + 8;
             int i;
 
-            *(abi_ulong*)argptr = tswap32(count);
+            *(target_ulong*)argptr = tswap32(count);
             for (i = 0; i < count; i++) {
                 *gdev = tswap64(*hdev);
                 gdev++;
@@ -5569,13 +5569,13 @@ static abi_long do_ioctl_dm(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
         case DM_LIST_VERSIONS:
         {
             struct dm_target_versions *vers = (void*)host_dm + host_dm->data_start;
-            abi_ulong remaining_data = guest_data_size;
+            target_ulong remaining_data = guest_data_size;
             void *cur_data = argptr;
             const argtype arg_type[] = { MK_STRUCT(STRUCT_dm_target_versions) };
             int vers_size = thunk_type_size(arg_type, 0);
 
             while (1) {
-                abi_ulong next = vers->next;
+                target_ulong next = vers->next;
                 if (next) {
                     vers->next = vers_size + (strlen(vers->name) + 1);
                 }
@@ -5614,14 +5614,14 @@ out:
     return ret;
 }
 
-static abi_long do_ioctl_blkpg(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
-                               int cmd, abi_long arg)
+static target_long do_ioctl_blkpg(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
+                               int cmd, target_long arg)
 {
     void *argptr;
     int target_size;
     const argtype *arg_type = ie->arg_type;
     const argtype part_arg_type[] = { MK_STRUCT(STRUCT_blkpg_partition) };
-    abi_long ret;
+    target_long ret;
 
     struct blkpg_ioctl_arg *host_blkpg = (void*)buf_temp;
     struct blkpg_partition host_part;
@@ -5649,7 +5649,7 @@ static abi_long do_ioctl_blkpg(const IOCTLEntry *ie, uint8_t *buf_temp, int fd,
     }
 
     /* Read and convert blkpg->data */
-    arg = (abi_long)(uintptr_t)host_blkpg->data;
+    arg = (target_long)(uintptr_t)host_blkpg->data;
     target_size = thunk_type_size(part_arg_type, 0);
     argptr = lock_user(VERIFY_READ, arg, target_size, 1);
     if (!argptr) {
@@ -5667,8 +5667,8 @@ out:
     return ret;
 }
 
-static abi_long do_ioctl_rt(const IOCTLEntry *ie, uint8_t *buf_temp,
-                                int fd, int cmd, abi_long arg)
+static target_long do_ioctl_rt(const IOCTLEntry *ie, uint8_t *buf_temp,
+                                int fd, int cmd, target_long arg)
 {
     const argtype *arg_type = ie->arg_type;
     const StructEntry *se;
@@ -5676,9 +5676,9 @@ static abi_long do_ioctl_rt(const IOCTLEntry *ie, uint8_t *buf_temp,
     const int *dst_offsets, *src_offsets;
     int target_size;
     void *argptr;
-    abi_ulong *target_rt_dev_ptr;
+    target_ulong *target_rt_dev_ptr;
     unsigned long *host_rt_dev_ptr;
-    abi_long ret;
+    target_long ret;
     int i;
 
     assert(ie->access == IOC_W);
@@ -5701,7 +5701,7 @@ static abi_long do_ioctl_rt(const IOCTLEntry *ie, uint8_t *buf_temp,
     for (i = 0; i < se->nb_fields; i++) {
         if (dst_offsets[i] == offsetof(struct rtentry, rt_dev)) {
             assert(*field_types == TYPE_PTRVOID);
-            target_rt_dev_ptr = (abi_ulong *)(argptr + src_offsets[i]);
+            target_rt_dev_ptr = (target_ulong *)(argptr + src_offsets[i]);
             host_rt_dev_ptr = (unsigned long *)(buf_temp + dst_offsets[i]);
             if (*target_rt_dev_ptr != 0) {
                 *host_rt_dev_ptr = (unsigned long)lock_user_string(
@@ -5730,16 +5730,16 @@ static abi_long do_ioctl_rt(const IOCTLEntry *ie, uint8_t *buf_temp,
     return ret;
 }
 
-static abi_long do_ioctl_kdsigaccept(const IOCTLEntry *ie, uint8_t *buf_temp,
-                                     int fd, int cmd, abi_long arg)
+static target_long do_ioctl_kdsigaccept(const IOCTLEntry *ie, uint8_t *buf_temp,
+                                     int fd, int cmd, target_long arg)
 {
     int sig = target_to_host_signal(arg);
     return get_errno(safe_ioctl(fd, ie->host_cmd, sig));
 }
 
 #ifdef TIOCGPTPEER
-static abi_long do_ioctl_tiocgptpeer(const IOCTLEntry *ie, uint8_t *buf_temp,
-                                     int fd, int cmd, abi_long arg)
+static target_long do_ioctl_tiocgptpeer(const IOCTLEntry *ie, uint8_t *buf_temp,
+                                     int fd, int cmd, target_long arg)
 {
     int flags = target_to_host_bitmask(arg, fcntl_flags_tbl);
     return get_errno(safe_ioctl(fd, ie->host_cmd, flags));
@@ -5759,11 +5759,11 @@ static IOCTLEntry ioctl_entries[] = {
 
 /* ??? Implement proper locking for ioctls.  */
 /* do_ioctl() Must return target values and target errnos. */
-static abi_long do_ioctl(int fd, int cmd, abi_long arg)
+static target_long do_ioctl(int fd, int cmd, target_long arg)
 {
     const IOCTLEntry *ie;
     const argtype *arg_type;
-    abi_long ret;
+    target_long ret;
     uint8_t buf_temp[MAX_STRUCT_SIZE];
     int target_size;
     void *argptr;
@@ -5840,7 +5840,7 @@ static abi_long do_ioctl(int fd, int cmd, abi_long arg)
         }
         break;
     default:
-        gemu_log("Unsupported ioctl type: cmd=0x%04lx type=%ld\n",
+        gemu_log("Unsupported ioctl type: cmd=0x%04lx type=%d\n",
                  (long)cmd, arg_type[0]);
         ret = -TARGET_ENOSYS;
         break;
@@ -6052,7 +6052,7 @@ static bitmask_transtbl mmap_flags_tbl[] = {
 /* NOTE: there is really one LDT for all the threads */
 static uint8_t *ldt_table;
 
-static abi_long read_ldt(abi_ulong ptr, unsigned long bytecount)
+static target_long read_ldt(target_ulong ptr, unsigned long bytecount)
 {
     int size;
     void *p;
@@ -6072,14 +6072,14 @@ static abi_long read_ldt(abi_ulong ptr, unsigned long bytecount)
 }
 
 /* XXX: add locking support */
-static abi_long write_ldt(CPUX86State *env,
-                          abi_ulong ptr, unsigned long bytecount, int oldmode)
+static target_long write_ldt(CPUX86State *env,
+                          target_ulong ptr, unsigned long bytecount, int oldmode)
 {
     struct target_modify_ldt_ldt_s ldt_info;
     struct target_modify_ldt_ldt_s *target_ldt_info;
     int seg_32bit, contents, read_exec_only, limit_in_pages;
     int seg_not_present, useable, lm;
-    abi_ulong *lp, entry_1, entry_2;
+    target_ulong *lp, entry_1, entry_2;
 
     if (bytecount != sizeof(ldt_info))
         return -TARGET_EINVAL;
@@ -6157,17 +6157,17 @@ static abi_long write_ldt(CPUX86State *env,
 
     /* Install the new entry ...  */
 install:
-    lp = (abi_ulong *)(ldt_table + (ldt_info.entry_number << 3));
+    lp = (target_ulong *)(ldt_table + (ldt_info.entry_number << 3));
     lp[0] = tswap32(entry_1);
     lp[1] = tswap32(entry_2);
     return 0;
 }
 
 /* specific and weird i386 syscalls */
-static abi_long do_modify_ldt(CPUX86State *env, int func, abi_ulong ptr,
+static target_long do_modify_ldt(CPUX86State *env, int func, target_ulong ptr,
                               unsigned long bytecount)
 {
-    abi_long ret;
+    target_long ret;
 
     switch (func) {
     case 0:
@@ -6187,14 +6187,14 @@ static abi_long do_modify_ldt(CPUX86State *env, int func, abi_ulong ptr,
 }
 
 #if defined(TARGET_I386) && defined(TARGET_ABI32)
-abi_long do_set_thread_area(CPUX86State *env, abi_ulong ptr)
+target_long do_set_thread_area(CPUX86State *env, target_ulong ptr)
 {
     uint64_t *gdt_table = g2h(env->gdt.base);
     struct target_modify_ldt_ldt_s ldt_info;
     struct target_modify_ldt_ldt_s *target_ldt_info;
     int seg_32bit, contents, read_exec_only, limit_in_pages;
     int seg_not_present, useable, lm;
-    abi_ulong *lp, entry_1, entry_2;
+    target_ulong *lp, entry_1, entry_2;
     int i;
 
     lock_user_struct(VERIFY_WRITE, target_ldt_info, ptr, 1);
@@ -6266,20 +6266,20 @@ abi_long do_set_thread_area(CPUX86State *env, abi_ulong ptr)
 
     /* Install the new entry ...  */
 install:
-    lp = (abi_ulong *)(gdt_table + ldt_info.entry_number);
+    lp = (target_ulong *)(gdt_table + ldt_info.entry_number);
     lp[0] = tswap32(entry_1);
     lp[1] = tswap32(entry_2);
     return 0;
 }
 
-static abi_long do_get_thread_area(CPUX86State *env, abi_ulong ptr)
+static target_long do_get_thread_area(CPUX86State *env, target_ulong ptr)
 {
     struct target_modify_ldt_ldt_s *target_ldt_info;
     uint64_t *gdt_table = g2h(env->gdt.base);
-    abi_ulong base_addr, limit, flags;
+    target_ulong base_addr, limit, flags;
     int seg_32bit, contents, read_exec_only, limit_in_pages, idx;
     int seg_not_present, useable, lm;
-    abi_ulong *lp, entry_1, entry_2;
+    target_ulong *lp, entry_1, entry_2;
 
     lock_user_struct(VERIFY_WRITE, target_ldt_info, ptr, 1);
     if (!target_ldt_info)
@@ -6290,7 +6290,7 @@ static abi_long do_get_thread_area(CPUX86State *env, abi_ulong ptr)
         unlock_user_struct(target_ldt_info, ptr, 1);
         return -TARGET_EINVAL;
     }
-    lp = (abi_ulong *)(gdt_table + idx);
+    lp = (target_ulong *)(gdt_table + idx);
     entry_1 = tswap32(lp[0]);
     entry_2 = tswap32(lp[1]);
     
@@ -6321,10 +6321,10 @@ static abi_long do_get_thread_area(CPUX86State *env, abi_ulong ptr)
 #endif /* TARGET_I386 && TARGET_ABI32 */
 
 #ifndef TARGET_ABI32
-abi_long do_arch_prctl(CPUX86State *env, int code, abi_ulong addr)
+target_long do_arch_prctl(CPUX86State *env, int code, target_ulong addr)
 {
-    abi_long ret = 0;
-    abi_ulong val;
+    target_long ret = 0;
+    target_ulong val;
     int idx;
 
     switch(code) {
@@ -6344,7 +6344,7 @@ abi_long do_arch_prctl(CPUX86State *env, int code, abi_ulong addr)
         else
             idx = R_FS;
         val = env->segs[idx].base;
-        if (put_user(val, addr, abi_ulong))
+        if (put_user(val, addr, target_ulong))
             ret = -TARGET_EFAULT;
         break;
     default:
@@ -6366,9 +6366,9 @@ typedef struct {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     pthread_t thread;
-    abi_ulong tid;
-    abi_ulong child_tidptr;
-    abi_ulong parent_tidptr;
+    target_ulong tid;
+    target_ulong child_tidptr;
+    target_ulong parent_tidptr;
     sigset_t sigmask;
 } new_thread_info;
 
@@ -6392,7 +6392,7 @@ static void *clone_func_syscall(void *arg)
     cpu = ENV_GET_CPU(env);
 	
     thread_cpu = cpu;
-	qemu_log("[clone_func_syscall]\tsyscall #%ld, thread_cpu: %p\n", offload_client_idx, thread_cpu);
+	qemu_log("[clone_func_syscall]\tsyscall #%d, thread_cpu: %lp\n", offload_client_idx, thread_cpu);
     TaskState* new_opaque = (TaskState*)malloc(sizeof(TaskState));
     *new_opaque = *((TaskState*)cpu->opaque);
     cpu->opaque = new_opaque;
@@ -6400,7 +6400,7 @@ static void *clone_func_syscall(void *arg)
     info->tid = gettid();
     qemu_log("[clone_func_syscall]\t[task_settid]\n");
     task_settid(ts);
-    qemu_log("[clone_func_syscall]\ttid: %p\n", info->tid);
+    qemu_log("[clone_func_syscall]\ttid: %lp\n", info->tid);
     
     if (info->child_tidptr)
         put_user_u32(info->tid, info->child_tidptr);
@@ -6459,7 +6459,7 @@ static void *clone_func(void *arg)
 	extern __thread CPUState *thread_cpu;
     thread_cpu = cpu;
 	
-	qemu_log(stderr, "[]client #%ld, thread_cpu: %p\n", offload_client_idx, thread_cpu);
+	qemu_log(stderr, "[]client #%d, thread_cpu: %lp\n", offload_client_idx, thread_cpu);
     ts = (TaskState *)cpu->opaque;
     info->tid = gettid();
     task_settid(ts);
@@ -6542,7 +6542,7 @@ static void *clone_func_local(void *arg)
     pthread_mutex_lock(&clone_lock);
     pthread_mutex_unlock(&clone_lock);
 
-    qemu_log("[clone_func_local]\tguest base %p\n", guest_base);
+    qemu_log("[clone_func_local]\tguest base %lp\n", guest_base);
 
     cpu_loop(env);
     /* never exits */
@@ -6627,9 +6627,9 @@ void *clone_func_server_local(void *arg)
     /* never exits */
     return NULL;
 }
-static int do_fork_remote(CPUArchState *env, unsigned int flags, abi_ulong newsp,
-                   abi_ulong parent_tidptr, target_ulong newtls,
-                   abi_ulong child_tidptr)
+static int do_fork_remote(CPUArchState *env, unsigned int flags, target_ulong newsp,
+                   target_ulong parent_tidptr, target_ulong newtls,
+                   target_ulong child_tidptr)
 {
 
     CPUState *cpu = ENV_GET_CPU(env);
@@ -6768,9 +6768,9 @@ static int do_fork_remote(CPUArchState *env, unsigned int flags, abi_ulong newsp
 }
 
 int extra_exec_init();
-static int do_fork_local(CPUArchState *env, unsigned int flags, abi_ulong newsp,
-                   abi_ulong parent_tidptr, target_ulong newtls,
-                   abi_ulong child_tidptr)
+static int do_fork_local(CPUArchState *env, unsigned int flags, target_ulong newsp,
+                   target_ulong parent_tidptr, target_ulong newtls,
+                   target_ulong child_tidptr)
 {
     CPUState *cpu = ENV_GET_CPU(env);
     int ret;
@@ -6906,9 +6906,9 @@ static int do_fork_local(CPUArchState *env, unsigned int flags, abi_ulong newsp,
     return ret;
 }
 
-static int do_fork_syscall(CPUArchState *env, unsigned int flags, abi_ulong newsp,
-                   abi_ulong parent_tidptr, target_ulong newtls,
-                   abi_ulong child_tidptr)
+static int do_fork_syscall(CPUArchState *env, unsigned int flags, target_ulong newsp,
+                   target_ulong parent_tidptr, target_ulong newtls,
+                   target_ulong child_tidptr)
 {
     CPUState *cpu = ENV_GET_CPU(env);
     int ret;
@@ -7045,12 +7045,12 @@ static int do_fork_syscall(CPUArchState *env, unsigned int flags, abi_ulong news
 }
 
 
-int do_fork_server_local(CPUArchState *env, unsigned int flags, abi_ulong newsp,
-                   abi_ulong parent_tidptr, target_ulong newtls,
-                   abi_ulong child_tidptr)
+int do_fork_server_local(CPUArchState *env, unsigned int flags, target_ulong newsp,
+                   target_ulong parent_tidptr, target_ulong newtls,
+                   target_ulong child_tidptr)
 {
     qemu_log("[do_fork_server_local]\tStart doing fork..\n");
-    qemu_log("[do_fork_server_local]\tenv %p flags %p, newsp %p, parent_tidptr %p, newtls %p, child_tidptr %p\n",
+    qemu_log("[do_fork_server_local]\tenv %lp flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
                                                 env, flags, newsp, parent_tidptr, newtls, child_tidptr);
     CPUState *cpu = ENV_GET_CPU(env);
     int ret;
@@ -7132,7 +7132,7 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, abi_ulong newsp,
         qemu_log("[do_fork_server_local]\tCreating child!\n");
         ret = pthread_create(&info.thread, &attr, clone_func_server_local, &info);
         //ret = pthread_create(&info.thread, NULL, test, &info);
-        qemu_log("[do_fork_server_local]\tCreating child!%ld\n", ret);
+        qemu_log("[do_fork_server_local]\tCreating child!%d\n", ret);
         //pthread_join(info.thread,NULL);
         /* TODO: Free new CPU state if thread creation failed.  */
 
@@ -7238,15 +7238,15 @@ typedef struct {
 } gst_thrd_info_t;
 extern gst_thrd_info_t gst_thrd_info[32];
 extern void offload_send_do_fork_info(int idx,
-        unsigned int flags, abi_ulong newsp,
-        abi_ulong parent_tidptr, target_ulong newtls,
-        abi_ulong child_tidptr);
+        unsigned int flags, target_ulong newsp,
+        target_ulong parent_tidptr, target_ulong newtls,
+        target_ulong child_tidptr);
 int thread_count = -1;
-static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
-                   abi_ulong parent_tidptr, target_ulong newtls,
-                   abi_ulong child_tidptr)
+static int do_fork(CPUArchState *env, unsigned int flags, target_ulong newsp,
+                   target_ulong parent_tidptr, target_ulong newtls,
+                   target_ulong child_tidptr)
 {
-    qemu_log("[do_fork]\tenv %p flags %p, newsp %p, parent_tidptr %p, newtls %p, child_tidptr %p\n",
+    qemu_log("[do_fork]\tenv %lp flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
                                     env, flags, newsp, parent_tidptr, newtls, child_tidptr);
     CPUState *cpu = ENV_GET_CPU(env);
     int ret;
@@ -7269,7 +7269,7 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
         thread_count++;
         int server_idx = gst_thrd_info[thread_count].server_idx,
             thread_idx = gst_thrd_info[thread_count].thread_idx;
-        qemu_log("[do_fork]\tguest thread %ld : %ld->%ld\n",
+        qemu_log("[do_fork]\tguest thread %d : %d->%d\n",
                         thread_count, server_idx, thread_idx);
         /* Determine to create in local or offload to remote server. */
         if (is_first) {
@@ -7284,7 +7284,7 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
                                     newtls, child_tidptr);
         }
         else if (server_idx > 0) {
-            qemu_log("[do_fork]\tOffload to server #%ld\n",
+            qemu_log("[do_fork]\tOffload to server #%d\n",
                             server_idx);
             offload_send_do_fork_info(server_idx, flags, newsp,
                     parent_tidptr, newtls, child_tidptr);
@@ -7358,21 +7358,15 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
         qemu_log("[do_fork]\tpthread_create\n");
         ret = pthread_create(&info.thread, &attr, clone_func, &info);
         /* TODO: Free new CPU state if thread creation failed.  */
-        qemu_log("[do_fork]\tpthread_create res: %ld\n", ret);
+        qemu_log("[do_fork]\tpthread_create res: %d\n", ret);
         if (is_first)
         {
             pthread_t syscall_init;
             ret = pthread_create(&syscall_init, &attr, clone_func_syscall, 
                                 &info);
             //pthread_join(syscall_init, NULL);
-            qemu_log("[do_fork]\tpthread_create syscall_daemonize res: %ld\n", ret);
+            qemu_log("[do_fork]\tpthread_create syscall_daemonize res: %d\n", ret);
             is_first = 0;
-        }
-        else {
-            // pthread_mutex_lock(&syscall_clone_mutex);
-            // syscall_clone_done = 1;
-            // pthread_cond_broadcast(&syscall_clone_cond);
-            // pthread_mutex_unlock(&syscall_clone_mutex);
         }
         qemu_log("[do_fork]\tSET mask NULL\n");
         sigprocmask(SIG_SETMASK, &info.sigmask, NULL);
@@ -7385,7 +7379,7 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
             pthread_cond_wait(&info.cond, &info.mutex);
             ret = info.tid;
         } else {
-            qemu_log("[do_fork]\tErr! ret = %ld\n", ret);
+            qemu_log("[do_fork]\tErr! ret = %d\n", ret);
             ret = -1;
         }
         pthread_mutex_unlock(&info.mutex);
@@ -7565,8 +7559,8 @@ static int host_to_target_flock(int type)
     return type;
 }
 
-static inline abi_long copy_from_user_flock(struct flock64 *fl,
-                                            abi_ulong target_flock_addr)
+static inline target_long copy_from_user_flock(struct flock64 *fl,
+                                            target_ulong target_flock_addr)
 {
     struct target_flock *target_fl;
     int l_type;
@@ -7589,7 +7583,7 @@ static inline abi_long copy_from_user_flock(struct flock64 *fl,
     return 0;
 }
 
-static inline abi_long copy_to_user_flock(abi_ulong target_flock_addr,
+static inline target_long copy_to_user_flock(target_ulong target_flock_addr,
                                           const struct flock64 *fl)
 {
     struct target_flock *target_fl;
@@ -7609,12 +7603,12 @@ static inline abi_long copy_to_user_flock(abi_ulong target_flock_addr,
     return 0;
 }
 
-typedef abi_long from_flock64_fn(struct flock64 *fl, abi_ulong target_addr);
-typedef abi_long to_flock64_fn(abi_ulong target_addr, const struct flock64 *fl);
+typedef target_long from_flock64_fn(struct flock64 *fl, target_ulong target_addr);
+typedef target_long to_flock64_fn(target_ulong target_addr, const struct flock64 *fl);
 
 #if defined(TARGET_ARM) && TARGET_ABI_BITS == 32
-static inline abi_long copy_from_user_oabi_flock64(struct flock64 *fl,
-                                                   abi_ulong target_flock_addr)
+static inline target_long copy_from_user_oabi_flock64(struct flock64 *fl,
+                                                   target_ulong target_flock_addr)
 {
     struct target_oabi_flock64 *target_fl;
     int l_type;
@@ -7637,7 +7631,7 @@ static inline abi_long copy_from_user_oabi_flock64(struct flock64 *fl,
     return 0;
 }
 
-static inline abi_long copy_to_user_oabi_flock64(abi_ulong target_flock_addr,
+static inline target_long copy_to_user_oabi_flock64(target_ulong target_flock_addr,
                                                  const struct flock64 *fl)
 {
     struct target_oabi_flock64 *target_fl;
@@ -7658,8 +7652,8 @@ static inline abi_long copy_to_user_oabi_flock64(abi_ulong target_flock_addr,
 }
 #endif
 
-static inline abi_long copy_from_user_flock64(struct flock64 *fl,
-                                              abi_ulong target_flock_addr)
+static inline target_long copy_from_user_flock64(struct flock64 *fl,
+                                              target_ulong target_flock_addr)
 {
     struct target_flock64 *target_fl;
     int l_type;
@@ -7682,7 +7676,7 @@ static inline abi_long copy_from_user_flock64(struct flock64 *fl,
     return 0;
 }
 
-static inline abi_long copy_to_user_flock64(abi_ulong target_flock_addr,
+static inline target_long copy_to_user_flock64(target_ulong target_flock_addr,
                                             const struct flock64 *fl)
 {
     struct target_flock64 *target_fl;
@@ -7702,14 +7696,14 @@ static inline abi_long copy_to_user_flock64(abi_ulong target_flock_addr,
     return 0;
 }
 
-static abi_long do_fcntl(int fd, int cmd, abi_ulong arg)
+static target_long do_fcntl(int fd, int cmd, target_ulong arg)
 {
     struct flock64 fl64;
 #ifdef F_GETOWN_EX
     struct f_owner_ex fox;
     struct target_f_owner_ex *target_fox;
 #endif
-    abi_long ret;
+    target_long ret;
     int host_cmd = target_to_host_fcntl_cmd(cmd);
 
     if (host_cmd == -TARGET_EINVAL)
@@ -7963,7 +7957,7 @@ void syscall_init(void)
 }
 
 #if TARGET_ABI_BITS == 32
-static inline uint64_t target_offset64(abi_ulong word0, abi_ulong word1)
+static inline uint64_t target_offset64(target_ulong word0, target_ulong word1)
 {
 #ifdef TARGET_WORDS_BIGENDIAN
     return ((uint64_t)word0 << 32) | word1;
@@ -7979,10 +7973,10 @@ static inline uint64_t target_offset64(uint64_t word0, uint64_t word1)
 #endif /* TARGET_ABI_BITS != 32 */
 
 #ifdef TARGET_NR_truncate64
-static inline abi_long target_truncate64(void *cpu_env, const char *arg1,
-                                         abi_long arg2,
-                                         abi_long arg3,
-                                         abi_long arg4)
+static inline target_long target_truncate64(void *cpu_env, const char *arg1,
+                                         target_long arg2,
+                                         target_long arg3,
+                                         target_long arg4)
 {
     if (regpairs_aligned(cpu_env, TARGET_NR_truncate64)) {
         arg2 = arg3;
@@ -7993,10 +7987,10 @@ static inline abi_long target_truncate64(void *cpu_env, const char *arg1,
 #endif
 
 #ifdef TARGET_NR_ftruncate64
-static inline abi_long target_ftruncate64(void *cpu_env, abi_long arg1,
-                                          abi_long arg2,
-                                          abi_long arg3,
-                                          abi_long arg4)
+static inline target_long target_ftruncate64(void *cpu_env, target_long arg1,
+                                          target_long arg2,
+                                          target_long arg3,
+                                          target_long arg4)
 {
     if (regpairs_aligned(cpu_env, TARGET_NR_ftruncate64)) {
         arg2 = arg3;
@@ -8006,8 +8000,8 @@ static inline abi_long target_ftruncate64(void *cpu_env, abi_long arg1,
 }
 #endif
 
-static inline abi_long target_to_host_timespec(struct timespec *host_ts,
-                                               abi_ulong target_addr)
+static inline target_long target_to_host_timespec(struct timespec *host_ts,
+                                               target_ulong target_addr)
 {
     struct target_timespec *target_ts;
 
@@ -8019,7 +8013,7 @@ static inline abi_long target_to_host_timespec(struct timespec *host_ts,
     return 0;
 }
 
-static inline abi_long host_to_target_timespec(abi_ulong target_addr,
+static inline target_long host_to_target_timespec(target_ulong target_addr,
                                                struct timespec *host_ts)
 {
     struct target_timespec *target_ts;
@@ -8032,8 +8026,8 @@ static inline abi_long host_to_target_timespec(abi_ulong target_addr,
     return 0;
 }
 
-static inline abi_long target_to_host_itimerspec(struct itimerspec *host_itspec,
-                                                 abi_ulong target_addr)
+static inline target_long target_to_host_itimerspec(struct itimerspec *host_itspec,
+                                                 target_ulong target_addr)
 {
     struct target_itimerspec *target_itspec;
 
@@ -8052,7 +8046,7 @@ static inline abi_long target_to_host_itimerspec(struct itimerspec *host_itspec,
     return 0;
 }
 
-static inline abi_long host_to_target_itimerspec(abi_ulong target_addr,
+static inline target_long host_to_target_itimerspec(target_ulong target_addr,
                                                struct itimerspec *host_its)
 {
     struct target_itimerspec *target_itspec;
@@ -8071,8 +8065,8 @@ static inline abi_long host_to_target_itimerspec(abi_ulong target_addr,
     return 0;
 }
 
-static inline abi_long target_to_host_timex(struct timex *host_tx,
-                                            abi_long target_addr)
+static inline target_long target_to_host_timex(struct timex *host_tx,
+                                            target_long target_addr)
 {
     struct target_timex *target_tx;
 
@@ -8106,7 +8100,7 @@ static inline abi_long target_to_host_timex(struct timex *host_tx,
     return 0;
 }
 
-static inline abi_long host_to_target_timex(abi_long target_addr,
+static inline target_long host_to_target_timex(target_long target_addr,
                                             struct timex *host_tx)
 {
     struct target_timex *target_tx;
@@ -8142,8 +8136,8 @@ static inline abi_long host_to_target_timex(abi_long target_addr,
 }
 
 
-static inline abi_long target_to_host_sigevent(struct sigevent *host_sevp,
-                                               abi_ulong target_addr)
+static inline target_long target_to_host_sigevent(struct sigevent *host_sevp,
+                                               target_ulong target_addr)
 {
     struct target_sigevent *target_sevp;
 
@@ -8183,13 +8177,13 @@ static inline int target_to_host_mlockall_arg(int arg)
 }
 #endif
 
-static inline abi_long host_to_target_stat64(void *cpu_env,
-                                             abi_ulong target_addr,
+static inline target_long host_to_target_stat64(void *cpu_env,
+                                             target_ulong target_addr,
                                              struct stat *host_st)
 {
 #if defined(TARGET_ARM) && defined(TARGET_ABI32)
     qemu_log("[DEBUG]\tpoint3-0\n");
-    qemu_log("[DEBUG]\teabi:%p\n",((CPUARMState *)cpu_env)->eabi);
+    qemu_log("[DEBUG]\teabi:%lp\n",((CPUARMState *)cpu_env)->eabi);
 
     if (((CPUARMState *)cpu_env)->eabi) {
         struct target_eabi_stat64 *target_st;
@@ -8253,7 +8247,7 @@ static inline abi_long host_to_target_stat64(void *cpu_env,
 #define _GNU_SOURCE       
 #include <unistd.h>
 #include <sys/syscall.h> 
-extern void print_holder(abi_ulong page_addr);
+extern void print_holder(target_ulong page_addr);
 
 extern void offload_client_lock_page(target_ulong addr);
 extern void offload_client_unlock_page(target_ulong addr);
@@ -8289,11 +8283,11 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAIT_BITSET:
 		
 		
-		qemu_log("[futex]futex wait uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(abi_ulong*)g2h(uaddr));
-		//TODO abi_ulong should be int
-        if (*(abi_ulong*)g2h(uaddr) != val)
+		qemu_log("[futex]futex wait uaddr: %lx, haddr: %lx, val: %lp, tswap32val: %lp, now g2g val: %lp\n", uaddr, g2h(uaddr), val, tswap32(val), *(target_ulong*)g2h(uaddr));
+		//TODO target_ulong should be int
+        if (*(target_ulong*)g2h(uaddr) != val)
         {
-            qemu_log("[offload_server_futex]\t[*(abi_ulong*)g2h(uaddr) %ld == val %ld, returning...]\n", *(abi_ulong*)g2h(uaddr), val);
+            qemu_log("[offload_server_futex]\t[*(target_ulong*)g2h(uaddr) %d == val %d, returning...]\n", *(target_ulong*)g2h(uaddr), val);
             return 0;
         }
         qemu_log("[DEBUG]\tpoint1\n");
@@ -8301,7 +8295,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
         extern int offload_server_idx;
         if ((offload_mode == 3) && (offload_server_idx == 0))//exec on center
             return offload_server_futex_wait(uaddr, op, val, timeout, uaddr2, val3);
-		//*(abi_ulong*)g2h(uaddr) = 0;
+		//*(target_ulong*)g2h(uaddr) = 0;
 		
 		// if (!timeout)
         // {
@@ -8316,7 +8310,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
             pts = NULL;
         }
         qemu_log("[DEBUG]\tpoint3\n");
-        qemu_log("[futex_wait]\t[timeout:]%ld,%ld\n", pts->tv_sec, pts->tv_nsec);
+        qemu_log("[futex_wait]\t[timeout:]%d,%ld\n", pts->tv_sec, pts->tv_nsec);
         return get_errno(safe_futex(g2h(uaddr), op, tswap32(val),
                          pts, NULL, val3));
 						 
@@ -8326,7 +8320,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_WAKE:
 		
 		
-		qemu_log( "[futex]ffffffffffffffffutex wake uaddr: %lx, haddr: %lx, val: %p, tswap32val: %p, now g2g val: %p\n", uaddr, g2h(uaddr), val, tswap32(val), *(abi_ulong*)g2h(uaddr));
+		qemu_log( "[futex]ffffffffffffffffutex wake uaddr: %lx, haddr: %lx, val: %lp, tswap32val: %lp, now g2g val: %lp\n", uaddr, g2h(uaddr), val, tswap32(val), *(target_ulong*)g2h(uaddr));
 		
 		//return 0;
 
@@ -8334,7 +8328,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
         {
             qemu_log("[futex_wait]\t[detected pthread_join]\n");
             put_user_u32(0, uaddr);
-            *(abi_ulong*)g2h(uaddr) = 0;
+            *(target_ulong*)g2h(uaddr) = 0;
         }
 		return offload_server_futex_wake(uaddr, op, val, timeout, uaddr2, val3);
         
@@ -8345,7 +8339,7 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     case FUTEX_CMP_REQUEUE:
     case FUTEX_WAKE_OP:
         /* For FUTEX_REQUEUE, FUTEX_CMP_REQUEUE, and FUTEX_WAKE_OP, the
-           TIMEOUT parameter is interpreted as a abi_ulong by the kernel.
+           TIMEOUT parameter is interpreted as a target_ulong by the kernel.
            But the prototype takes a `struct timespec *'; insert casts
            to satisfy the compiler.  We do not need to tswap TIMEOUT
            since it's not compared to guest memory.  */
@@ -8360,14 +8354,14 @@ static int do_futex(target_ulong uaddr, int op, int val, target_ulong timeout,
     }
 }
 #if defined(TARGET_NR_name_to_handle_at) && defined(CONFIG_OPEN_BY_HANDLE)
-static abi_long do_name_to_handle_at(abi_long dirfd, abi_long pathname,
-                                     abi_long handle, abi_long mount_id,
-                                     abi_long flags)
+static target_long do_name_to_handle_at(target_long dirfd, target_long pathname,
+                                     target_long handle, target_long mount_id,
+                                     target_long flags)
 {
     struct file_handle *target_fh;
     struct file_handle *fh;
     int mid = 0;
-    abi_long ret;
+    target_long ret;
     char *name;
     unsigned int size, total_size;
 
@@ -8414,13 +8408,13 @@ static abi_long do_name_to_handle_at(abi_long dirfd, abi_long pathname,
 #endif
 
 #if defined(TARGET_NR_open_by_handle_at) && defined(CONFIG_OPEN_BY_HANDLE)
-static abi_long do_open_by_handle_at(abi_long mount_fd, abi_long handle,
-                                     abi_long flags)
+static target_long do_open_by_handle_at(target_long mount_fd, target_long handle,
+                                     target_long flags)
 {
     struct file_handle *target_fh;
     struct file_handle *fh;
     unsigned int size, total_size;
-    abi_long ret;
+    target_long ret;
 
     if (get_user_s32(size, handle)) {
         return -TARGET_EFAULT;
@@ -8489,7 +8483,7 @@ host_to_target_signalfd_siginfo(struct signalfd_siginfo *tinfo,
     tinfo->ssi_addr = tswap64(info->ssi_addr);
 }
 
-static abi_long host_to_target_data_signalfd(void *buf, size_t len)
+static target_long host_to_target_data_signalfd(void *buf, size_t len)
 {
     int i;
 
@@ -8504,12 +8498,12 @@ static TargetFdTrans target_signalfd_trans = {
     .host_to_target_data = host_to_target_data_signalfd,
 };
 
-static abi_long do_signalfd4(int fd, abi_long mask, int flags)
+static target_long do_signalfd4(int fd, target_long mask, int flags)
 {
     int host_flags;
     target_sigset_t *target_mask;
     sigset_t host_mask;
-    abi_long ret;
+    target_long ret;
 
     if (flags & ~(TARGET_O_NONBLOCK | TARGET_O_CLOEXEC)) {
         return -TARGET_EINVAL;
@@ -8583,7 +8577,7 @@ static int open_self_maps(void *cpu_env, int fd)
         uint64_t min, max, offset;
         char flag_r, flag_w, flag_x, flag_p;
         char path[512] = "";
-        fields = sscanf(line, "%"PRIx64"-%"PRIx64" %c%c%c%c %"PRIx64" %lx:%lx %ld"
+        fields = sscanf(line, "%"PRIx64"-%"PRIx64" %c%c%c%c %"PRIx64" %lx:%lx %d"
                         " %512s", &min, &max, &flag_r, &flag_w, &flag_x,
                         &flag_p, &offset, &dev_maj, &dev_min, &inode, path);
 
@@ -8600,7 +8594,7 @@ static int open_self_maps(void *cpu_env, int fd)
                 pstrcpy(path, sizeof(path), "      [stack]");
             }
             dprintf(fd, TARGET_ABI_FMT_lx "-" TARGET_ABI_FMT_lx
-                    " %c%c%c%c %08" PRIx64 " %02x:%02x %ld %s%s\n",
+                    " %c%c%c%c %08" PRIx64 " %02x:%02x %d %s%s\n",
                     h2g(min), h2g(max - 1) + 1, flag_r, flag_w,
                     flag_x, flag_p, offset, dev_maj, dev_min, inode,
                     path[0] ? "         " : "", path);
@@ -8617,7 +8611,7 @@ static int open_self_stat(void *cpu_env, int fd)
 {
     CPUState *cpu = ENV_GET_CPU((CPUArchState *)cpu_env);
     TaskState *ts = cpu->opaque;
-    abi_ulong start_stack = ts->info->start_stack;
+    target_ulong start_stack = ts->info->start_stack;
     int i;
 
     for (i = 0; i < 44; i++) {
@@ -8654,8 +8648,8 @@ static int open_self_auxv(void *cpu_env, int fd)
 {
     CPUState *cpu = ENV_GET_CPU((CPUArchState *)cpu_env);
     TaskState *ts = cpu->opaque;
-    abi_ulong auxv = ts->info->saved_auxv;
-    abi_ulong len = ts->info->auxv_len;
+    target_ulong auxv = ts->info->saved_auxv;
+    target_ulong len = ts->info->auxv_len;
     char *ptr;
 
     /*
@@ -8688,7 +8682,7 @@ static int is_proc_myself(const char *filename, const char *entry)
             filename += strlen("self/");
         } else if (*filename >= '1' && *filename <= '9') {
             char myself[80];
-            snprintf(myself, sizeof(myself), "%ld/", getpid());
+            snprintf(myself, sizeof(myself), "%d/", getpid());
             if (!strncmp(filename, myself, strlen(myself))) {
                 filename += strlen(myself);
             } else {
@@ -8731,12 +8725,12 @@ static int open_net_route(void *cpu_env, int fd)
 
     while ((read = getline(&line, &len, fp)) != -1) {
         char iface[16];
-        abi_ulong dest, gw, mask;
+        target_ulong dest, gw, mask;
         unsigned int flags, refcnt, use, metric, mtu, window, irtt;
-        sscanf(line, "%s\t%08x\t%08x\t%04x\t%ld\t%ld\t%ld\t%08x\t%ld\t%u\t%u\n",
+        sscanf(line, "%s\t%08x\t%08x\t%04x\t%d\t%d\t%d\t%08x\t%d\t%u\t%u\n",
                      iface, &dest, &gw, &flags, &refcnt, &use, &metric,
                      &mask, &mtu, &window, &irtt);
-        dprintf(fd, "%s\t%08x\t%08x\t%04x\t%ld\t%ld\t%ld\t%08x\t%ld\t%u\t%u\n",
+        dprintf(fd, "%s\t%08x\t%08x\t%04x\t%d\t%d\t%d\t%08x\t%d\t%u\t%u\n",
                 iface, tswap32(dest), tswap32(gw), flags, refcnt, use,
                 metric, tswap32(mask), mtu, window, irtt);
     }
@@ -8812,7 +8806,7 @@ static int do_openat(void *cpu_env, int dirfd, const char *pathname, int flags, 
 #define TIMER_MAGIC_MASK 0xffff0000
 
 /* Convert QEMU provided timer ID back to internal 16bit index format */
-static target_timer_t get_timer_id(abi_long arg)
+static target_timer_t get_timer_id(target_long arg)
 {
     target_timer_t timerid = arg;
 
@@ -8829,7 +8823,7 @@ static target_timer_t get_timer_id(abi_long arg)
     return timerid;
 }
 
-static abi_long swap_data_eventfd(void *buf, size_t len)
+static target_long swap_data_eventfd(void *buf, size_t len)
 {
     uint64_t *counter = buf;
     int i;
@@ -8854,11 +8848,11 @@ static TargetFdTrans target_eventfd_trans = {
 #if (defined(TARGET_NR_inotify_init) && defined(__NR_inotify_init)) || \
     (defined(CONFIG_INOTIFY1) && defined(TARGET_NR_inotify_init1) && \
      defined(__NR_inotify_init1))
-static abi_long host_to_target_data_inotify(void *buf, size_t len)
+static target_long host_to_target_data_inotify(void *buf, size_t len)
 {
     struct inotify_event *ev;
     int i;
-    abi_ulong name_len;
+    target_ulong name_len;
 
     for (i = 0; i < len; i += sizeof(struct inotify_event) + name_len) {
         ev = (struct inotify_event *)((char *)buf + i);
@@ -8880,12 +8874,12 @@ static TargetFdTrans target_inotify_trans = {
 
 static int target_to_host_cpu_mask(unsigned long *host_mask,
                                    size_t host_size,
-                                   abi_ulong target_addr,
+                                   target_ulong target_addr,
                                    size_t target_size)
 {
-    unsigned target_bits = sizeof(abi_ulong) * 8;
+    unsigned target_bits = sizeof(target_ulong) * 8;
     unsigned host_bits = sizeof(*host_mask) * 8;
-    abi_ulong *target_mask;
+    target_ulong *target_mask;
     unsigned i, j;
 
     assert(host_size >= target_size);
@@ -8896,9 +8890,9 @@ static int target_to_host_cpu_mask(unsigned long *host_mask,
     }
     memset(host_mask, 0, host_size);
 
-    for (i = 0 ; i < target_size / sizeof(abi_ulong); i++) {
+    for (i = 0 ; i < target_size / sizeof(target_ulong); i++) {
         unsigned bit = i * target_bits;
-        abi_ulong val;
+        target_ulong val;
 
         __get_user(val, &target_mask[i]);
         for (j = 0; j < target_bits; j++, bit++) {
@@ -8914,12 +8908,12 @@ static int target_to_host_cpu_mask(unsigned long *host_mask,
 
 static int host_to_target_cpu_mask(const unsigned long *host_mask,
                                    size_t host_size,
-                                   abi_ulong target_addr,
+                                   target_ulong target_addr,
                                    size_t target_size)
 {
-    unsigned target_bits = sizeof(abi_ulong) * 8;
+    unsigned target_bits = sizeof(target_ulong) * 8;
     unsigned host_bits = sizeof(*host_mask) * 8;
-    abi_ulong *target_mask;
+    target_ulong *target_mask;
     unsigned i, j;
 
     assert(host_size >= target_size);
@@ -8929,9 +8923,9 @@ static int host_to_target_cpu_mask(const unsigned long *host_mask,
         return -TARGET_EFAULT;
     }
 
-    for (i = 0 ; i < target_size / sizeof(abi_ulong); i++) {
+    for (i = 0 ; i < target_size / sizeof(target_ulong); i++) {
         unsigned bit = i * target_bits;
-        abi_ulong val = 0;
+        target_ulong val = 0;
 
         for (j = 0; j < target_bits; j++, bit++) {
             if (host_mask[bit / host_bits] & (1UL << (bit % host_bits))) {
@@ -8948,14 +8942,14 @@ static int host_to_target_cpu_mask(const unsigned long *host_mask,
 /* do_syscall() should always have a single exit point at the end so
    that actions, such as logging of syscall results, can be performed.
    All errnos that do_syscall() returns must be -TARGET_<errcode>. */
-abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
-                    abi_long arg2, abi_long arg3, abi_long arg4,
-                    abi_long arg5, abi_long arg6, abi_long arg7,
-                    abi_long arg8)
+target_long do_syscall(void *cpu_env, int num, target_long arg1,
+                    target_long arg2, target_long arg3, target_long arg4,
+                    target_long arg5, target_long arg6, target_long arg7,
+                    target_long arg8)
 {
     //qemu_log("[DEBUGsyscall]\tpoint0\n");
     CPUState *cpu = ENV_GET_CPU(cpu_env);
-    abi_long ret;
+    target_long ret;
     struct stat st;
     struct statfs stfs;
     void *p;
@@ -9031,16 +9025,16 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 
         cpu_list_unlock();
         ts = cpu->opaque;
-        //qemu_log("[exit]\tNOW child_tidptr: %p\n", ts->child_tidptr);
-        qemu_log("[exit]\tNOW child_tidptr value: %p\n", *(abi_ulong*)g2h(ts->child_tidptr));
+        //qemu_log("[exit]\tNOW child_tidptr: %lp\n", ts->child_tidptr);
+        qemu_log("[exit]\tNOW child_tidptr value: %lp\n", *(target_ulong*)g2h(ts->child_tidptr));
         if (ts->child_tidptr) {
             
-            //*(abi_ulong*)(g2h(ts->child_tidptr)) = 0;
+            //*(target_ulong*)(g2h(ts->child_tidptr)) = 0;
             //put_user_u32(0, ts->child_tidptr);
-            extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
-                                                        abi_long arg2, abi_long arg3, abi_long arg4,
-                                                        abi_long arg5, abi_long arg6, abi_long arg7,
-                                                        abi_long arg8);
+            extern target_long pass_syscall(void *cpu_env, int num, target_long arg1,
+                                                        target_long arg2, target_long arg3, target_long arg4,
+                                                        target_long arg5, target_long arg6, target_long arg7,
+                                                        target_long arg8);
             pass_syscall(cpu_env,TARGET_NR_futex,ts->child_tidptr, FUTEX_WAKE, INT_MAX,
                         1, 1, 1, 0, 1);
         }
@@ -9069,7 +9063,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             ret = 0;
         else {
 
-            extern int offload_segfault_handler_positive(abi_ulong page_addr, int perm);
+            extern int offload_segfault_handler_positive(target_ulong page_addr, int perm);
 			offload_segfault_handler_positive(arg2, 2);
             if (!(p = lock_user(VERIFY_WRITE, arg2, arg3, 0)))
                 goto efault;
@@ -9231,16 +9225,16 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         {
             char **argp, **envp;
             int argc, envc;
-            abi_ulong gp;
-            abi_ulong guest_argp;
-            abi_ulong guest_envp;
-            abi_ulong addr;
+            target_ulong gp;
+            target_ulong guest_argp;
+            target_ulong guest_envp;
+            target_ulong addr;
             char **q;
             int total_size = 0;
 
             argc = 0;
             guest_argp = arg2;
-            for (gp = guest_argp; gp; gp += sizeof(abi_ulong)) {
+            for (gp = guest_argp; gp; gp += sizeof(target_ulong)) {
                 if (get_user_ual(addr, gp))
                     goto efault;
                 if (!addr)
@@ -9249,7 +9243,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             }
             envc = 0;
             guest_envp = arg3;
-            for (gp = guest_envp; gp; gp += sizeof(abi_ulong)) {
+            for (gp = guest_envp; gp; gp += sizeof(target_ulong)) {
                 if (get_user_ual(addr, gp))
                     goto efault;
                 if (!addr)
@@ -9261,7 +9255,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             envp = g_new0(char *, envc + 1);
 
             for (gp = guest_argp, q = argp; gp;
-                  gp += sizeof(abi_ulong), q++) {
+                  gp += sizeof(target_ulong), q++) {
                 if (get_user_ual(addr, gp))
                     goto execve_efault;
                 if (!addr)
@@ -9273,7 +9267,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             *q = NULL;
 
             for (gp = guest_envp, q = envp; gp;
-                  gp += sizeof(abi_ulong), q++) {
+                  gp += sizeof(target_ulong), q++) {
                 if (get_user_ual(addr, gp))
                     goto execve_efault;
                 if (!addr)
@@ -9306,14 +9300,14 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 
         execve_end:
             for (gp = guest_argp, q = argp; *q;
-                  gp += sizeof(abi_ulong), q++) {
+                  gp += sizeof(target_ulong), q++) {
                 if (get_user_ual(addr, gp)
                     || !addr)
                     break;
                 unlock_user(*q, addr, 0);
             }
             for (gp = guest_envp, q = envp; *q;
-                  gp += sizeof(abi_ulong), q++) {
+                  gp += sizeof(target_ulong), q++) {
                 if (get_user_ual(addr, gp)
                     || !addr)
                     break;
@@ -9962,7 +9956,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_sgetmask:
         {
             sigset_t cur_set;
-            abi_ulong target_set;
+            target_ulong target_set;
             ret = do_sigprocmask(0, NULL, &cur_set);
             if (!ret) {
                 host_to_target_old_sigset(&target_set, &cur_set);
@@ -9975,7 +9969,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_ssetmask:
         {
             sigset_t set, oset;
-            abi_ulong target_set = arg1;
+            target_ulong target_set = arg1;
             target_to_host_old_sigset(&set, &target_set);
             ret = do_sigprocmask(SIG_SETMASK, &set, &oset);
             if (!ret) {
@@ -9990,7 +9984,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         {
 #if defined(TARGET_ALPHA)
             sigset_t set, oldset;
-            abi_ulong mask;
+            target_ulong mask;
             int how;
 
             switch (arg1) {
@@ -10140,7 +10134,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         {
             TaskState *ts = cpu->opaque;
 #if defined(TARGET_ALPHA)
-            abi_ulong mask = arg1;
+            target_ulong mask = arg1;
             target_to_host_old_sigset(&ts->sigsuspend_mask, &mask);
 #else
             if (!(p = lock_user(VERIFY_READ, arg1, sizeof(target_sigset_t), 1)))
@@ -10347,7 +10341,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 #ifdef TARGET_NR_pselect6
     case TARGET_NR_pselect6:
         {
-            abi_long rfd_addr, wfd_addr, efd_addr, n, ts_addr;
+            target_long rfd_addr, wfd_addr, efd_addr, n, ts_addr;
             fd_set rfds, wfds, efds;
             fd_set *rfds_ptr, *wfds_ptr, *efds_ptr;
             struct timespec ts, *ts_ptr;
@@ -10362,7 +10356,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
                 size_t size;
             } sig, *sig_ptr;
 
-            abi_ulong arg_sigset, arg_sigsize, *arg7;
+            target_ulong arg_sigset, arg_sigsize, *arg7;
             target_sigset_t *target_sigset;
 
             n = arg1;
@@ -10571,9 +10565,9 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     defined(TARGET_M68K) || defined(TARGET_CRIS) || defined(TARGET_MICROBLAZE) \
     || defined(TARGET_S390X)
         {
-            abi_ulong *v;
-            abi_ulong v1, v2, v3, v4, v5, v6;
-            if (!(v = lock_user(VERIFY_READ, arg1, 6 * sizeof(abi_ulong), 1)))
+            target_ulong *v;
+            target_ulong v1, v2, v3, v4, v5, v6;
+            if (!(v = lock_user(VERIFY_READ, arg1, 6 * sizeof(target_ulong), 1)))
                 goto efault;
             v1 = tswapal(v[0]);
             v2 = tswapal(v[1]);
@@ -11031,10 +11025,10 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_wait4:
         {
             int status;
-            abi_long status_ptr = arg2;
+            target_long status_ptr = arg2;
             struct rusage rusage, *rusage_ptr;
-            abi_ulong target_rusage = arg4;
-            abi_long rusage_err;
+            target_ulong target_rusage = arg4;
+            target_long rusage_err;
             if (target_rusage)
                 rusage_ptr = &rusage;
             else
@@ -11174,9 +11168,9 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         /* new thread calls */
     case TARGET_NR_exit_group:
         preexit_cleanup(cpu_env, arg1);
-    extern int cas_count;
-    extern int ldex_count;
-    extern int stex_count;
+    // extern int cas_count;
+    // extern int ldex_count;
+    // extern int stex_count;
         ret = get_errno(exit_group(arg1));
         break;
 #endif
@@ -11289,7 +11283,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         {
             int64_t res;
 #if !defined(__NR_llseek)
-            res = lseek(arg1, ((uint64_t)arg2 << 32) | (abi_ulong)arg3, arg5);
+            res = lseek(arg1, ((uint64_t)arg2 << 32) | (target_ulong)arg3, arg5);
             if (res == -1) {
                 ret = get_errno(res);
             } else {
@@ -11311,7 +11305,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         {
             struct target_dirent *target_dirp;
             struct linux_dirent *dirp;
-            abi_long count = arg3;
+            target_long count = arg3;
 
             dirp = g_try_malloc(count);
             if (!dirp) {
@@ -11355,7 +11349,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 #else
         {
             struct linux_dirent *dirp;
-            abi_long count = arg3;
+            target_long count = arg3;
 
             if (!(dirp = lock_user(VERIFY_WRITE, arg2, count, 0)))
                 goto efault;
@@ -11383,7 +11377,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         /* Implement getdents in terms of getdents64 */
         {
             struct linux_dirent64 *dirp;
-            abi_long count = arg3;
+            target_long count = arg3;
 
             dirp = lock_user(VERIFY_WRITE, arg2, count, 0);
             if (!dirp) {
@@ -11413,7 +11407,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
                     namelen = strlen(de->d_name);
                     treclen = offsetof(struct target_dirent, d_name)
                         + namelen + 2;
-                    treclen = QEMU_ALIGN_UP(treclen, sizeof(abi_long));
+                    treclen = QEMU_ALIGN_UP(treclen, sizeof(target_long));
 
                     memmove(tde->d_name, de->d_name, namelen + 1);
                     tde->d_ino = tswapal(ino);
@@ -11440,7 +11434,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_getdents64:
         {
             struct linux_dirent64 *dirp;
-            abi_long count = arg3;
+            target_long count = arg3;
             if (!(dirp = lock_user(VERIFY_WRITE, arg2, count, 0)))
                 goto efault;
             ret = get_errno(sys_getdents64(arg1, dirp, count));
@@ -11663,7 +11657,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
              * sched_getaffinity needs multiples of ulong, so need to take
              * care of mismatches between target ulong and host ulong sizes.
              */
-            if (arg2 & (sizeof(abi_ulong) - 1)) {
+            if (arg2 & (sizeof(target_ulong) - 1)) {
                 ret = -TARGET_EINVAL;
                 break;
             }
@@ -11676,9 +11670,9 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             if (!is_error(ret)) {
                 if (ret > arg2) {
                     /* More data returned than the caller's buffer will fit.
-                     * This only happens if sizeof(abi_long) < sizeof(long)
+                     * This only happens if sizeof(target_long) < sizeof(long)
                      * and the caller passed us a buffer holding an odd number
-                     * of abi_longs. If the host kernel is actually using the
+                     * of target_longs. If the host kernel is actually using the
                      * extra 4 bytes then fail EINVAL; otherwise we can just
                      * ignore them and only copy the interesting part.
                      */
@@ -11705,7 +11699,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
              * sched_setaffinity needs multiples of ulong, so need to take
              * care of mismatches between target ulong and host ulong sizes.
              */
-            if (arg2 & (sizeof(abi_ulong) - 1)) {
+            if (arg2 & (sizeof(target_ulong) - 1)) {
                 ret = -TARGET_EINVAL;
                 break;
             }
@@ -12022,7 +12016,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         }
         ret = get_errno(sendfile(arg1, arg2, offp, arg4));
         if (!is_error(ret) && arg3) {
-            abi_long ret2 = put_user_sal(off, arg3);
+            target_long ret2 = put_user_sal(off, arg3);
             if (is_error(ret2)) {
                 ret = ret2;
             }
@@ -12043,7 +12037,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         }
         ret = get_errno(sendfile(arg1, arg2, offp, arg4));
         if (!is_error(ret) && arg3) {
-            abi_long ret2 = put_user_s64(off, arg3);
+            target_long ret2 = put_user_s64(off, arg3);
             if (is_error(ret2)) {
                 ret = ret2;
             }
@@ -12134,7 +12128,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         {
 
             //qemu_log("[DEBUG]\tpoint2\n");
-            //qemu_log("[DEBUG]\teabi:%p\n",((CPUARMState *)cpu_env)->eabi);
+            //qemu_log("[DEBUG]\teabi:%lp\n",((CPUARMState *)cpu_env)->eabi);
             ret = host_to_target_stat64(cpu_env, arg2, &st);
         }
         break;
@@ -12473,7 +12467,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     /* Alpha specific.  */
     case TARGET_NR_osf_sigprocmask:
         {
-            abi_ulong mask;
+            target_ulong mask;
             int how;
             sigset_t set, oldset;
 
@@ -12531,7 +12525,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_getgroups32:
         {
             int gidsetsize = arg1;
-            abi_ulong *target_grouplist;
+            target_ulong *target_grouplist;
             gid_t *grouplist;
             int i;
 
@@ -12556,7 +12550,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_setgroups32:
         {
             int gidsetsize = arg1;
-            abi_ulong *target_grouplist;
+            target_ulong *target_grouplist;
             gid_t *grouplist;
             int i;
 
@@ -13178,10 +13172,10 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         if ((offload_mode == 3) && (offload_server_idx == 0) && (syscall_started_flag == 1))
         {
             //TODO
-            extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
-                                                        abi_long arg2, abi_long arg3, abi_long arg4,
-                                                        abi_long arg5, abi_long arg6, abi_long arg7,
-                                                        abi_long arg8);
+            extern target_long pass_syscall(void *cpu_env, int num, target_long arg1,
+                                                        target_long arg2, target_long arg3, target_long arg4,
+                                                        target_long arg5, target_long arg6, target_long arg7,
+                                                        target_long arg8);
             ret = pass_syscall(cpu_env,TARGET_NR_futex,arg1, arg2, arg3,
                         arg4, arg5, arg6, 0, 0);
 
@@ -13615,7 +13609,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     case TARGET_NR_atomic_cmpxchg_32:
     {
         /* should use start_exclusive from main.c */
-        abi_ulong mem_value;
+        target_ulong mem_value;
         if (get_user_u32(mem_value, arg6)) {
             target_siginfo_t info;
             info.si_signo = SIGSEGV;
@@ -13843,7 +13837,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 
     default:
     unimplemented:
-        qemu_log_mask(LOG_UNIMP, "Unsupported syscall: %ld\n", num);
+        qemu_log_mask(LOG_UNIMP, "Unsupported syscall: %d\n", num);
 #if defined(TARGET_NR_setxattr) || defined(TARGET_NR_get_thread_area) || defined(TARGET_NR_getdomainname) || defined(TARGET_NR_set_robust_list)
     unimplemented_nowarn:
 #endif

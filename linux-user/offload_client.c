@@ -134,27 +134,27 @@ static void offload_send_mutex_verified(int, int);
 
 static void offload_send_page_wakeup(int idx, target_ulong page_addr);
 static void offload_process_mutex_done(void);
-static void offload_send_syscall_result(int,abi_long,int);
+static void offload_send_syscall_result(int,target_long,int);
 static void offload_process_syscall_request(void);
-static void offload_send_tid(int idx, abi_ulong tid);
+// static void offload_send_tid(int idx, target_ulong tid);
 //futexes
-static void futex_table_wake(abi_ulong futex_addr, int num, int idx, int thread_id);
+static void futex_table_wake(target_ulong futex_addr, int num, int idx, int thread_id);
 static void print_futex_table();
-static void futex_table_add(abi_ulong futex_addr, int idx, int thread_id);
+static void futex_table_add(target_ulong futex_addr, int idx, int thread_id);
 static int try_recv(int);
 static int communication_send_sum, communication_recv_sum;
 static pthread_mutex_t g_cas_mutex = PTHREAD_MUTEX_INITIALIZER;
-extern int offload_segfault_handler_positive(abi_ulong page_addr, int perm);
+extern int offload_segfault_handler_positive(target_ulong page_addr, int perm);
 extern int gst_thrd_plc[32];
 int syscall_started_flag;
-int futex_table_cmp_requeue(abi_ulong uaddr, int futex_op, int val, abi_ulong val2,
-							abi_ulong uaddr2, int val3, int idx, int thread_id);
+int futex_table_cmp_requeue(target_ulong uaddr, int futex_op, int val, target_ulong val2,
+							target_ulong uaddr2, int val3, int idx, int thread_id);
 void offload_connect_online_server(int idx);
 int false_sharing_flag = 0;
 __thread char buf[TARGET_PAGE_SIZE * 4];
 
 extern PageMapDesc_server page_map_table_s[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE];
-extern PageMapDesc_server *get_pmd_s(abi_ulong page_addr);
+extern PageMapDesc_server *get_pmd_s(target_ulong page_addr);
 
 //int requestor_idx, target_ulong addr, int perm
 struct info
@@ -175,21 +175,21 @@ struct syscall_param
 {
 	void* cpu_env;
 	int num;
-	abi_long arg1;
-	abi_long arg2;
-	abi_long arg3;
-	abi_long arg4;
-	abi_long arg5;
-	abi_long arg6;
-	abi_long arg7;
-	abi_long arg8;
+	target_long arg1;
+	target_long arg2;
+	target_long arg3;
+	target_long arg4;
+	target_long arg5;
+	target_long arg6;
+	target_long arg7;
+	target_long arg8;
 	int idx;
 	int thread_id;
 };
 
 struct syscall_param* syscall_global_pointer;
-static pthread_mutex_t clone_syscall_mutex;
-static int testint = 233;
+// static pthread_mutex_t clone_syscall_mutex;
+
 struct Node
 {
 	int val;
@@ -198,15 +198,15 @@ struct Node
 };
 struct futex_record
 {
-	abi_ulong futex_addr;
+	target_ulong futex_addr;
 	int isInUse;
 	struct Node * head;
 };
 struct pgft_record
 {
-	abi_ulong page_addr;
-	abi_ulong wait_addr;
-	abi_ulong fetch_beg_addr;
+	target_ulong page_addr;
+	target_ulong wait_addr;
+	target_ulong fetch_beg_addr;
 	int life;
 	int wait_hit_count;// for correctly pre
 	int pref_count;// how many is beging prefetching
@@ -216,8 +216,8 @@ struct pgft_record
 
 static struct futex_record * futex_table;
 static struct pgft_record prefetch_table[MAX_WORKER];
-static int prefetch_handler(abi_ulong page_addr, int idx);
-static int prefetch_check(abi_ulong page_addr, int idx);
+static int prefetch_handler(target_ulong page_addr, int idx);
+static int prefetch_check(target_ulong page_addr, int idx);
 static void show_prefetch_list(int idx);
 
 #include "set.h"
@@ -233,15 +233,15 @@ static void show_prefetch_list(int idx);
 
 static __thread char net_buffer[NET_BUFFER_SIZE];
 
-static target_ulong mutex_list[FUTEX_RECORD_MAX] = {0};
+// static target_ulong mutex_list[FUTEX_RECORD_MAX] = {0};
 
 // |mutex address|holder|requestor list|pending flag|
 struct MutexTuple
 {
-	abi_ulong mutexAddr;
-	abi_ulong holderId;
+	target_ulong mutexAddr;
+	target_ulong holderId;
 	bool hasPending;
-	abi_ulong pendingList[FUTEX_RECORD_MAX];	//TODO: SHOULD BE INT!!! BECAUSE CLIENT STARTS WITH #0!!!!!!
+	target_ulong pendingList[FUTEX_RECORD_MAX];	//TODO: SHOULD BE INT!!! BECAUSE CLIENT STARTS WITH #0!!!!!!
 	int tail;	// behave as a list
 	int head;
 };
@@ -250,8 +250,8 @@ static struct MutexTuple MutexList[FUTEX_RECORD_MAX];
 FILE *log;
 typedef struct cas_record
 {
-	abi_ulong cas_addr;
-	abi_ulong cas_value;
+	target_ulong cas_addr;
+	target_ulong cas_value;
 	int user;
 	int user_thread_idx;
 	struct cas_record *next;
@@ -260,9 +260,9 @@ typedef struct cas_record
 
 typedef struct cas_node
 {
-	abi_ulong cmpv;
-	abi_ulong newv;
-	abi_ulong strv;
+	target_ulong cmpv;
+	target_ulong newv;
+	target_ulong strv;
 	int idx;
 	int thread_idx;
 	struct cas_node *next;
@@ -273,8 +273,8 @@ cas_record cas_list = {0, 0, 0, 0, 0};
 static int autoSend(int Fd,char* buf, int length, int flag);
 
 extern __thread int offload_client_idx;
-extern abi_ulong target_brk;
-extern abi_ulong target_original_brk;
+extern target_ulong target_brk;
+extern target_ulong target_original_brk;
 extern int offload_count;
 pthread_mutex_t offload_count_mutex = PTHREAD_MUTEX_INITIALIZER;
 static __thread pthread_mutex_t send_mutex[MAX_WORKER];
@@ -290,11 +290,13 @@ target_ulong binary_end_address;
 int last_flag_recv = 1; // whether we received something.
 int last_flag_pending = 1; // whether we had a pending request.
 
-static __thread int cmpxchg_flag;
+// static __thread int cmpxchg_flag;
 
-static pthread_mutex_t count_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t do_syscall_mutex; static pthread_cond_t do_syscall_cond; int do_syscall_flag;
+// static pthread_mutex_t count_mutex = PTHREAD_MUTEX_INITIALIZER;
+// static pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t do_syscall_mutex; 
+static pthread_cond_t do_syscall_cond; 
+int do_syscall_flag;
 static int is_first_do_syscall_thread;
 
 
@@ -316,26 +318,30 @@ typedef struct PageMapDesc {
 	int invalid_count;					/* How many we should tell to invalidate */
 	int cur_perm;
 	req_node list_head; 				/* to record request list */
-	abi_ulong flag;
-	abi_ulong shadow_page_addr;
+	target_ulong flag;
+	target_ulong shadow_page_addr;
 	int fs_notice_count;				/* for the last time use of fs page */
 } PageMapDesc;
 
 PageMapDesc page_map_table[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section"))) __attribute__ ((aligned(4096))) = {0};
-PageMapDesc *get_pmd(abi_ulong page_addr);
+PageMapDesc *get_pmd(target_ulong page_addr);
 static int fetch_page_func(int requestor_idx, target_ulong addr, int perm);
-static abi_ulong get_number(void)
+static target_ulong get_number(void)
 {
 	struct tcp_msg_header tmh = *((struct tcp_msg_header *) net_buffer);
 	return tmh.counter;
 }
+#ifdef AAA
 static uint32_t get_tag(void)
 {
 	struct tcp_msg_header tmh = *((struct tcp_msg_header *) net_buffer);
 	return tmh.tag;
 }
+#endif
 // used along with pthread_cond, indicate whether the page required by the execution thread is received.
-static __thread int page_recv_flag; static __thread pthread_mutex_t page_recv_mutex; static __thread pthread_cond_t page_recv_cond;
+// static __thread int page_recv_flag;
+ static __thread pthread_mutex_t page_recv_mutex; 
+ static __thread pthread_cond_t page_recv_cond;
 
 
 void close_network(void);
@@ -350,25 +356,25 @@ static void offload_send_page_upgrade(int idx, target_ulong page_addr, int);
 
 static void offload_process_page_request(void);
 void* offload_client_daemonize(void);
-static void offload_client_send_futex_wake_result(int result);
+// static void offload_client_send_futex_wake_result(int result);
 //int client_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc);
 
 int offload_client_start(CPUArchState *the_env);
 void* offload_center_client_start(void*);
-static void offload_send_page_request(int idx, target_ulong guest_addr, abi_ulong perm,int);
-static void offload_send_page_content(int idx, target_ulong guest_addr, abi_ulong perm, char *content);
+static void offload_send_page_request(target_ulong idx, target_ulong guest_addr, target_ulong perm,target_ulong);
+static void offload_send_page_content(int idx, target_ulong guest_addr, target_ulong perm, char *content);
 
-static void offload_client_send_cmpxchg_ack(target_ulong);
+// static void offload_client_send_cmpxchg_ack(target_ulong);
 static void offload_process_page_ack(void);
-static void offload_send_page_perm(int idx, target_ulong page_addr, int perm);
-static int offload_client_fetch_page(int requestor_idx, abi_ulong page_addr, int is_write);
+// static void offload_send_page_perm(int idx, target_ulong page_addr, target_long perm);
+static int offload_client_fetch_page(int requestor_idx, target_ulong page_addr, int is_write);
 static void offload_process_page_content(void);
 void offload_client_pmd_init(void);
 
 
 
-static int offload_client_futex_prelude(target_ulong page_addr);
-static void offload_client_futex_epilogue(target_ulong page_addr);
+// static int offload_client_futex_prelude(target_ulong page_addr);
+// static void offload_client_futex_epilogue(target_ulong page_addr);
 
 
 
@@ -535,15 +541,15 @@ static int dump_self_maps(void)
 	// static int has_read = 0;
 	int num = 0;
 	// 话说这里p不是空的吗？
-	abi_ulong *p_num = (abi_ulong *)p;
-	p += sizeof(abi_ulong);
+	target_ulong *p_num = (target_ulong *)p;
+	p += sizeof(target_ulong);
 	// heap_end
-	*((abi_ulong *) p) = target_brk;
-	p += sizeof(abi_ulong);
-	abi_ulong *p_stack_start = (abi_ulong *)p;
-	p += sizeof(abi_ulong);
-	abi_ulong *p_stack_end = (abi_ulong *)p;
-	p += sizeof(abi_ulong);
+	*((target_ulong *) p) = target_brk;
+	p += sizeof(target_ulong);
+	target_ulong *p_stack_start = (target_ulong *)p;
+	p += sizeof(target_ulong);
+	target_ulong *p_stack_end = (target_ulong *)p;
+	p += sizeof(target_ulong);
 	fprintf(stderr, "p_num: %ld, target_brk: %ld, stack_start: %ld, stack_end: %ld\n");
 	while ((read = getline(&line, &len, fp)) != -1) {
 		int fields, dev_maj, dev_min, inode;
@@ -571,8 +577,8 @@ static int dump_self_maps(void)
 			// actually what is the difference between the OS stack and the other sections?
 			// can a program itself create a new section?
 
-			abi_ulong start = h2g(min);
-			abi_ulong end = h2g(max - 1) + 1;
+			target_ulong start = h2g(min);
+			target_ulong end = h2g(max - 1) + 1;
 
 
 			if (h2g(min) == ts->info->stack_limit) {
@@ -590,7 +596,7 @@ static int dump_self_maps(void)
 					path[0] ? "			" : "", path);*/
 
 
-			abi_ulong flag = 0;
+			target_ulong flag = 0;
 
 
 			if (flag_w == 'w')
@@ -612,18 +618,18 @@ static int dump_self_maps(void)
 
 			fprintf(stderr, "memory region: %lx to %lx, host: %lx to %lx, %c%c%c\n", start, end, g2h(start), g2h(end), flag_r, flag_w, flag_x);
 			//fprintf(stderr, "[DEBUGGG]\t%lx", g2h(8e568));
-			*(abi_ulong *)p = start;
-			p += sizeof(abi_ulong);
+			*(target_ulong *)p = start;
+			p += sizeof(target_ulong);
 
-			*(abi_ulong *)p = (end - start) / PAGE_SIZE;;
-			p += sizeof(abi_ulong);
+			*(target_ulong *)p = (end - start) / PAGE_SIZE;;
+			p += sizeof(target_ulong);
 
 
-			*(abi_ulong *)p = flag;
-			p += sizeof(abi_ulong);
+			*(target_ulong *)p = flag;
+			p += sizeof(target_ulong);
 
-			*(abi_ulong *)p = (abi_ulong)(end - start);
-			p += sizeof(abi_ulong);
+			*(target_ulong *)p = (target_ulong)(end - start);
+			p += sizeof(target_ulong);
 
 			fprintf(stderr, "%d\n", num);
 			num++;
@@ -631,10 +637,10 @@ static int dump_self_maps(void)
 	}
 
 	fprintf(stderr, "dump map success!\n");
-	*((abi_ulong *) p_num) = num;
+	*((target_ulong *) p_num) = num;
 
 
-	fprintf(stderr, "[client]\tmemory region of %ld\n", *((abi_ulong *) p_num));
+	fprintf(stderr, "[client]\tmemory region of %ld\n", *((target_ulong *) p_num));
 	free(line);
 	fclose(fp);
 	return 0;
@@ -650,34 +656,34 @@ static void dump_brk(void)
 	// question: what is the difference between the target_original_brk and the target_brk ?
 	// are they old brk and brk dedicated by the CSBT client?
 	// what is the difference between brk and heap_end
-	*(abi_ulong *)p = 0;
-	p += sizeof(abi_ulong);
-	*(abi_ulong *)p = target_brk;
-	p += sizeof(abi_ulong);
+	*(target_ulong *)p = 0;
+	p += sizeof(target_ulong);
+	*(target_ulong *)p = target_brk;
+	p += sizeof(target_ulong);
 }
 
 
 static void dump_code(void)
 {
-	*(abi_ulong *)p = binary_start_address;
-	p += sizeof(abi_ulong);
+	*(target_ulong *)p = binary_start_address;
+	p += sizeof(target_ulong);
 
 
-	*(abi_ulong *)p = binary_end_address;
-	p += sizeof(abi_ulong);
+	*(target_ulong *)p = binary_end_address;
+	p += sizeof(target_ulong);
 
 	//printf("socket fd address: %lp\n", (void*)&skt);
 	fprintf(stderr, "[dump_code]\tbinary start: %lx end: %lx, pc: %lx\n", binary_start_address, binary_end_address, client_env->regs[15]);
 	int tmp[1];
 	cpu_memory_rw_debug(ENV_GET_CPU(client_env), 0x10324, tmp, 4, 1);
-	//fprintf(stderr, "[dump_code]\t0x10324 is at host %lx. = %lx = %lx\n", g2h(0x10324), *((abi_ulong *) g2h(0x10324)), tmp[0]);
+	//fprintf(stderr, "[dump_code]\t0x10324 is at host %lx. = %lx = %lx\n", g2h(0x10324), *((target_ulong *) g2h(0x10324)), tmp[0]);
 	//target_disas(stderr, ENV_GET_CPU(client_env), client_env->regs[15], 10);
 	// why segmentation fault???????????????
 	//mprotect(g2h(binary_start_address), (unsigned int)binary_end_address - binary_start_address, PROT_READ);
 	memcpy((void *)p, (void *)(g2h(binary_start_address )), (unsigned int)binary_end_address - binary_start_address);
 	//fprintf(stderr, "here: %ld %ld %ld\n", );
-	p += (abi_ulong)binary_end_address - binary_start_address;
-	//fprintf(stderr, "first code: %lx", *((abi_ulong *) g2h(client_env->regs[15])));
+	p += (target_ulong)binary_end_address - binary_start_address;
+	//fprintf(stderr, "first code: %lx", *((target_ulong *) g2h(client_env->regs[15])));
 }
 
 static void dump_cpu(void)
@@ -696,10 +702,6 @@ static void dump_cpu(void)
 }
 
 /* Offload the following guest thread to slave node. */
-static void offload_send_extra_start(int idx)
-{
-
-}
 /* Dump the informations and send to slave QEMU. */
 //这里需要修改
 static void offload_send_start(int first)
@@ -794,7 +796,7 @@ static void offload_send_page_upgrade(int idx, target_ulong page_addr, int perm)
 }
 
 
-void print_holder(abi_ulong page_addr)
+void print_holder(target_ulong page_addr)
 {
 	PageMapDesc *pmd = get_pmd(page_addr);
 	fprintf(stderr,"[print_holder]\taddr: %lp\n",page_addr);
@@ -857,7 +859,7 @@ static int fetch_page_func(int requestor_idx, target_ulong addr, int perm)
 			offload_master_send_page(page_addr, perm, requestor_idx);
 		} else {
 		/* revoke page as shared page */
-		offload_send_page_request(pmd->owner_set.element[0], page_addr, 1, requestor_idx);
+			offload_send_page_request(pmd->owner_set.element[0], page_addr, 1, requestor_idx);
 		}
 
 	}
@@ -928,7 +930,7 @@ static int fetch_page_func(int requestor_idx, target_ulong addr, int perm)
 // 	return 0;
 // }
 
-inline PageMapDesc* get_pmd(abi_ulong page_addr)
+inline PageMapDesc* get_pmd(target_ulong page_addr)
 {
 	page_addr = PAGE_OF(page_addr);
 	page_addr = page_addr >> MAP_PAGE_BITS;
@@ -945,7 +947,7 @@ static inline void show_pmd_list(req_node *p)
 		p = p->next;
 	}
 }
-static void wake_pmd_list(abi_ulong page_addr)
+static void wake_pmd_list(target_ulong page_addr)
 {
 	fprintf(stderr, "[process_pmd]\twake pmd list! %lp\n", page_addr);
 	PageMapDesc *pmd = get_pmd(page_addr);
@@ -965,7 +967,7 @@ static void wake_pmd_list(abi_ulong page_addr)
 	}
 	pmd->list_head.next = NULL;
 }
-static int process_pmd(abi_ulong page_addr)
+static int process_pmd(target_ulong page_addr)
 {
 	PageMapDesc *pmd = get_pmd(page_addr);
 	// TODO: This is just a naive fetch. Let readers go if there are multiple readers. */
@@ -1004,7 +1006,7 @@ static int process_pmd(abi_ulong page_addr)
 	
 }
 /* Add the request to list and process it if we can */
-static int offload_client_fetch_page(int requestor_idx, abi_ulong addr, int perm)
+static int offload_client_fetch_page(int requestor_idx, target_ulong addr, int perm)
 {
 
 	fprintf(stderr, "[offload_client_fetch_page]\tadding to list page address %lp, perm %ld\n", addr, perm);
@@ -1038,6 +1040,7 @@ static int offload_client_fetch_page(int requestor_idx, abi_ulong addr, int perm
 	return 0;
 }
 
+#ifdef AAA
 // show MutexList
 static void offload_show_mutex_list(void)
 {
@@ -1068,6 +1071,7 @@ static void offload_show_mutex_list(void)
 	fprintf(stderr, "[offload_show_mutex_list]: showing MutexList...\n%s", buf);
 }
 
+#endif
 
 static void show_cas_list()
 {
@@ -1100,7 +1104,7 @@ static void show_cas_list()
 /* Search cas list and return the address of the cas_record.
 	NULL on not found.
 */
-static cas_record* cas_list_lookup(abi_ulong cas_addr)
+static cas_record* cas_list_lookup(target_ulong cas_addr)
 {
 	fprintf(stderr, "[cas_list_lookup]\tlooking up for cas_addr %lp\n", cas_addr);
 	cas_record *tmp = cas_list.next;
@@ -1115,7 +1119,7 @@ static cas_record* cas_list_lookup(abi_ulong cas_addr)
 
 
 /* add a record to cas list and return its address */
-static cas_record* cas_list_add_record(abi_ulong cas_addr, abi_ulong cas_val)
+static cas_record* cas_list_add_record(target_ulong cas_addr, target_ulong cas_val)
 {
 	fprintf(stderr, "[cas_list_add_record]\tadding record cas_addr %lp, cas_val %lx\n", cas_addr, cas_val);
 	cas_record *tmp = &cas_list;
@@ -1136,7 +1140,7 @@ static cas_record* cas_list_add_record(abi_ulong cas_addr, abi_ulong cas_val)
  * else return 0
  */ 
 int good_to_go=0;
-static int cas_list_add_request(cas_record *record, int idx, abi_ulong cmpv, abi_ulong newv, abi_ulong strv, int thread_idx)
+static int cas_list_add_request(cas_record *record, int idx, target_ulong cmpv, target_ulong newv, target_ulong strv, int thread_idx)
 {
 	fprintf(stderr, "[cas_list_add_request]\tnew request cas_addr %lp, idx %ld->%ld, cmpv %lx, newv %lx, strv %lx\n"
 															,record->cas_addr, idx, thread_idx, cmpv, newv, strv);
@@ -1189,12 +1193,12 @@ static void offload_process_mutex_request(void)
 	p = net_buffer;
 	target_ulong cas_addr = *(target_ulong *) p;
 	p += sizeof(target_ulong);
-	abi_ulong requestorId = *(abi_ulong *) p;
-	p += sizeof(abi_ulong);
-	abi_ulong cmpv = *(abi_ulong*)p;
-	p += sizeof(abi_ulong);
-	abi_ulong newv = *(abi_ulong*)p;
-	p += sizeof(abi_ulong);
+	target_ulong requestorId = *(target_ulong *) p;
+	p += sizeof(target_ulong);
+	target_ulong cmpv = *(target_ulong*)p;
+	p += sizeof(target_ulong);
+	target_ulong newv = *(target_ulong*)p;
+	p += sizeof(target_ulong);
 	int thread_idx = *(int *)p;
 	p += sizeof(int);
 	offload_segfault_handler_positive(cas_addr, 1);
@@ -1224,20 +1228,20 @@ static void offload_process_mutex_request(void)
 }
 
 
-static inline void dqemu_set_page_bit(abi_ulong page_addr, abi_ulong page_bit)
+static inline void dqemu_set_page_bit(target_ulong page_addr, target_ulong page_bit)
 {
 	PageMapDesc *pmd = get_pmd(page_addr);
 	pmd->flag = page_bit;
 	fprintf(stderr, "[dqemu_set_page_bit]\tnow %lp page bit = %lp\n", page_addr, page_bit);
 }
 
-static void offload_broadcast_fs_page(abi_ulong page_addr, abi_ulong shadow_page_addr)
+static void offload_broadcast_fs_page(target_ulong page_addr, target_ulong shadow_page_addr)
 {
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	*((target_ulong *) pp) = page_addr;
 	pp += sizeof(target_ulong);
-	*((abi_ulong*)pp) = shadow_page_addr;
-	pp += sizeof(abi_ulong);
+	*((target_ulong*)pp) = shadow_page_addr;
+	pp += sizeof(target_ulong);
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)buf;
 	fill_tcp_header(tcp_header, pp - buf - sizeof(struct tcp_msg_header), TAG_OFFLOAD_FS_PAGE);
 	/* Broadcast message. */
@@ -1249,17 +1253,17 @@ static void offload_broadcast_fs_page(abi_ulong page_addr, abi_ulong shadow_page
 }
 /* Process and broadcast false sharing page. */
 /* Clean up the left */
-abi_ulong offload_client_process_false_sharing_page(abi_ulong page_addr)
+target_ulong offload_client_process_false_sharing_page(target_ulong page_addr)
 {
 	fprintf(stderr, "[offload_client_process_false_sharing_page]\t"
 					"page addr = %lp\n",
 					page_addr);
 	PageMapDesc *pmd = get_pmd(page_addr);
 	/* Create shadow page mapping. */
-	abi_ulong shadow_page_addr = shadow_page_base;
+	target_ulong shadow_page_addr = shadow_page_base;
 	shadow_page_base += MAX_PAGE_SPLIT * PAGE_SIZE;
 	assert(shadow_page_base < 0xd0000000);
-	abi_ulong ret = target_mmap(shadow_page_addr, 
+	target_ulong ret = target_mmap(shadow_page_addr, 
 						MAX_PAGE_SPLIT*PAGE_SIZE, PROT_READ|PROT_WRITE,
 						MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 	assert(ret == shadow_page_addr);
@@ -1270,8 +1274,8 @@ abi_ulong offload_client_process_false_sharing_page(abi_ulong page_addr)
 					"Created shadow pages for %lp, shadow page base = %lp, setting to zeros\n", 
 					page_addr, shadow_page_addr);
 	memset(g2h(shadow_page_addr), 0, MAX_PAGE_SPLIT*PAGE_SIZE);
-	abi_ulong step = MIN_PAGE_GRAIN;
-	abi_ulong start = shadow_page_addr, o_start = page_addr;
+	target_ulong step = MIN_PAGE_GRAIN;
+	target_ulong start = shadow_page_addr, o_start = page_addr;
 	for (int i = 0; i < MAX_PAGE_SPLIT; i++) {
 		fprintf(stderr, "[offload_client_process_false_sharing_page]\t"
 						"%ld: copying to %lp - %lp from %lp - %lp, step %lp\n", i,
@@ -1301,6 +1305,7 @@ abi_ulong offload_client_process_false_sharing_page(abi_ulong page_addr)
 	fprintf(stderr, "[offload_client_process_false_sharing_page]\tclean set and unlock.\n");
 	pthread_mutex_unlock(&pmd->owner_set_mutex);
 	wake_pmd_list(page_addr);
+	return NULL;
 }
 
 /* fetch page */
@@ -1310,8 +1315,8 @@ static void offload_process_page_request(void)
 	p = net_buffer;
 	target_ulong page_addr = *(target_ulong *) p;
 	p += sizeof(target_ulong);
-	int perm = *(abi_ulong *) p;
-	p += sizeof(abi_ulong);
+	int perm = *(target_ulong *) p;
+	p += sizeof(target_ulong);
 //#define MASTER_PAGE_OPTIMIZE
 #ifdef MASTER_PAGE_OPTIMIZE
 	
@@ -1324,8 +1329,8 @@ static void offload_process_page_request(void)
 #endif
 
 	PageMapDesc *pmd = get_pmd(page_addr);
-	/*abi_ulong got_flag = *(abi_ulong *)p;
-	p += sizeof(abi_ulong);*/
+	/*target_ulong got_flag = *(target_ulong *)p;
+	p += sizeof(target_ulong);*/
 	fprintf(stderr, "[offload_process_page_request client#%ld]\trequested address: %lx, perm: %ld\n", offload_client_idx, page_addr, perm);
 	fprintf(log, "%ld\t%lp\t%ld\n", offload_client_idx, page_addr, perm);
 	/* Cancle prefetch */
@@ -1346,7 +1351,7 @@ static void offload_process_page_request(void)
 	if (perm == 2) {
 			offload_client_fetch_page(offload_client_idx, page_addr, 2);
 			
-			//abi_ulong start	= page_addr & 0xffff0000;
+			//target_ulong start	= page_addr & 0xffff0000;
 			//for (int i = 0; i < 0x10; i++) {
 			//	offload_client_fetch_page(offload_client_idx, start + i * PAGE_SIZE, 2);
 			//}
@@ -1384,7 +1389,7 @@ static void offload_process_page_request(void)
 	}
 	else {
 		if (page_addr > 0xff000000) {
-			abi_ulong start	= page_addr & 0xffff0000;
+			target_ulong start	= page_addr & 0xffff0000;
 			for (int i = 0; i < 0x10; i++) {
 				offload_client_fetch_page(offload_client_idx, start + i * PAGE_SIZE, 1);
 			}
@@ -1569,7 +1574,7 @@ void* offload_center_client_start(void *arg)
 	return NULL;
 }
 
-static void futex_table_add(abi_ulong futex_addr, int idx, int thread_id)
+static void futex_table_add(target_ulong futex_addr, int idx, int thread_id)
 {
 	fprintf(stderr, "[futex_table_add]\tadding futex_addr = %lp, idx = %ld\n", futex_addr, idx);
 
@@ -1660,7 +1665,7 @@ static void print_futex_table()
 	in the futex_table
 	NULL for not found
 */
-static struct futex_record * futex_table_find(abi_ulong futex_addr)
+static struct futex_record * futex_table_find(target_ulong futex_addr)
 {
 	int i = 0;
 	struct futex_record *pr = futex_table;
@@ -1680,7 +1685,7 @@ static struct futex_record * futex_table_find(abi_ulong futex_addr)
 	return pr;
 }
 
-static struct futex_record *futex_table_create_empty_record(abi_ulong futex_addr)
+static struct futex_record *futex_table_create_empty_record(target_ulong futex_addr)
 {
 	fprintf(stderr, "[futex_table_create_empty_record]\tAdding emty record %lp!\n", futex_addr);
 	/* Make sure there is no same record. */
@@ -1703,7 +1708,7 @@ static struct futex_record *futex_table_create_empty_record(abi_ulong futex_addr
 	return &futex_table[i];
 }
 
-static void futex_table_wake(abi_ulong futex_addr, int num, int idx, int thread_id)
+static void futex_table_wake(target_ulong futex_addr, int num, int idx, int thread_id)
 {
 	fprintf(stderr, "checkpiont 3\n");
 	fprintf(stderr, "[futex_table_wake]\tWaking up futex on %lp, num = %ld\n", futex_addr, num);
@@ -1748,7 +1753,7 @@ static void futex_table_wake(abi_ulong futex_addr, int num, int idx, int thread_
 }
 
 /*  int futex(int *uaddr, int futex_op, int val,
-                 const struct timespec *timeout,    or: abi_ulong val2 
+                 const struct timespec *timeout,    or: target_ulong val2 
                  int *uaddr2, int val3);
 */
 /*        FUTEX_CMP_REQUEUE (since Linux 2.6.7)
@@ -1783,8 +1788,8 @@ static void futex_table_wake(abi_ulong futex_addr, int num, int idx, int thread_
 		of waiters requeued to the futex for the futex word at uaddr2.
 
 */
-int futex_table_cmp_requeue(abi_ulong uaddr, int futex_op, int val, abi_ulong val2,
-							abi_ulong uaddr2, int val3, int idx, int thread_id)
+int futex_table_cmp_requeue(target_ulong uaddr, int futex_op, int val, target_ulong val2,
+							target_ulong uaddr2, int val3, int idx, int thread_id)
 {
 	fprintf(stderr, "[futex_table_cmp_requeue]\tuaddr %lp, futex_op %lp, val %lp, val2 %lp, uaddr2 %lp, val3 %lp of idx %ld->%ld\n",
 			uaddr, futex_op, val, val2, uaddr2, val3, idx, thread_id);
@@ -1899,7 +1904,7 @@ int futex_table_cmp_requeue(abi_ulong uaddr, int futex_op, int val, abi_ulong va
 /* Set a timer to wake up Futex_waiter */
 void* futex_timer(const struct timespec * timeout, void* p)
 {
-
+	return NULL;
 }
 
 //持续做syscall的主循环
@@ -1947,20 +1952,20 @@ void syscall_daemonize(void)
 		}
 		CPUARMState* cpu_env = (CPUARMState*)syscall_p->cpu_env;
 		int num = syscall_p->num;
-		abi_long arg1 = syscall_p->arg1;
-		abi_long arg2 = syscall_p->arg2;
-		abi_long arg3 = syscall_p->arg3;
-		abi_long arg4 = syscall_p->arg4;
-		abi_long arg5 = syscall_p->arg5;
-		abi_long arg6 = syscall_p->arg6;
-		abi_long arg7 = syscall_p->arg7;
-		abi_long arg8 = syscall_p->arg8;
+		target_long arg1 = syscall_p->arg1;
+		target_long arg2 = syscall_p->arg2;
+		target_long arg3 = syscall_p->arg3;
+		target_long arg4 = syscall_p->arg4;
+		target_long arg5 = syscall_p->arg5;
+		target_long arg6 = syscall_p->arg6;
+		// target_long arg7 = syscall_p->arg7;
+		target_long arg8 = syscall_p->arg8;
 		int idx = syscall_p->idx;
 		int thread_id = syscall_p->thread_id;
 		fprintf(stderr, "[syscall_daemonize]\tprocessing passed syscall from %ld->%ld, arg1: %lp, arg2:%lp, arg3:%lp\n", idx, thread_id, arg1, arg2, arg3);
 		extern void print_syscall(int num,
-				abi_long arg1, abi_long arg2, abi_long arg3,
-				abi_long arg4, abi_long arg5, abi_long arg6);
+				target_long arg1, target_long arg2, target_long arg3,
+				target_long arg4, target_long arg5, target_long arg6);
         if(do_strace) {
 		    print_syscall(num,
 		    		arg1, arg2, arg3,
@@ -1969,7 +1974,7 @@ void syscall_daemonize(void)
 		fprintf(stderr, "[syscall_daemonize]\teabi:%lp\n",((CPUARMState *)cpu_env)->eabi);
 		// futex wait
 		/*       int futex(int *uaddr, int futex_op, int val,
-                 const struct timespec *timeout,   or: abi_ulong val2
+                 const struct timespec *timeout,   or: target_ulong val2
 				 int *uaddr2, int val3);
 				 arg1: uaddr, arg2: futex_op, arg3: val, 
 				 arg4: timeout/val2 ,arg5: uaddr2, arg6: val3.
@@ -2044,7 +2049,7 @@ void syscall_daemonize(void)
 			&& ((arg2 == (FUTEX_PRIVATE_FLAG|FUTEX_WAKE)) || (arg2 == FUTEX_WAKE)))
 		{
 			fprintf(stderr, "[syscall_daemonize]\treceived FUTEX_PRIVATE_FLAG|FUTEX_WAKE, %lp, %lp, %ld, arg8: %ld\n", FUTEX_PRIVATE_FLAG | FUTEX_WAKE, arg2, arg2 == 0x81 ? 1 : 0, arg8);
-			abi_ulong futex_addr = arg1;
+			target_ulong futex_addr = arg1;
 			int wakeup_num = arg3;
 			int isChildEnd = arg8;
 			if (isChildEnd == 1)
@@ -2074,7 +2079,7 @@ void syscall_daemonize(void)
 			int val = arg3;
 			int val2 = arg4;
 			void *futex_addr2 = arg5;
-			abi_ulong op_cmp_val = arg6;
+			target_ulong op_cmp_val = arg6;
 			fprintf(stderr, "[syscall_daemonize]\treceived FUTEX_PRIVATE_FLAG|FUTEX_WAKE_OP, %lp, %lp, %ld, arg8: %ld\n", FUTEX_PRIVATE_FLAG | FUTEX_WAKE_OP, arg2, arg2 == 0x81 ? 1 : 0, arg8);
 			// 请求一个页面
 			// 等效代码
@@ -2161,11 +2166,11 @@ void syscall_daemonize(void)
 				fprintf(stderr, "[syscall_daemonize]\tfetching write, %ld %c %ld\n", arg1, *(char*)g2h(arg2), arg3);
 			}
 			print_futex_table();
-			extern abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
-							abi_long arg2, abi_long arg3, abi_long arg4,
-							abi_long arg5, abi_long arg6, abi_long arg7,
-							abi_long arg8);
-			abi_long ret = do_syscall(cpu_env,
+			extern target_long do_syscall(void *cpu_env, int num, target_long arg1,
+							target_long arg2, target_long arg3, target_long arg4,
+							target_long arg5, target_long arg6, target_long arg7,
+							target_long arg8);
+			target_long ret = do_syscall(cpu_env,
 						num,
 						arg1,
 						arg2,
@@ -2201,6 +2206,7 @@ void* thread_end_cleanup(CPUArchState *the_env)
 	put_user_u32(0, ts->child_tidptr);
 	//do_syscall(g2h(ts->child_tidptr), FUTEX_WAKE, INT_MAX,
 	//			NULL, NULL, 0);
+	return NULL;
 }
 
 /* Initiate client daemonize. 
@@ -2257,7 +2263,6 @@ void offload_syscall_daemonize_start(CPUArchState *the_env)
 
 	pthread_mutex_init(&do_syscall_mutex,NULL);
 	pthread_cond_init(&do_syscall_cond,NULL);
-	int res;
 	//pthread_t syscall_daemonize_thread;
 	//pthread_create(&syscall_daemonize_thread, NULL, syscall_daemonize, NULL);
 	//pthread_t daemonize;
@@ -2276,18 +2281,18 @@ void offload_syscall_daemonize_start(CPUArchState *the_env)
  * page for who			: 4
  * is false sharing		: 4
  */
-static void offload_send_page_request(int idx, target_ulong page_addr, abi_ulong perm, int forwho)
+static void offload_send_page_request(target_ulong idx, target_ulong page_addr, target_ulong perm, target_ulong forwho)
 {
 	p = BUFFER_PAYLOAD_P;
 
 	*((target_ulong *) p) = page_addr;
 	p += sizeof(target_ulong);
-	*((abi_ulong *) p) = perm;
-	p += sizeof(abi_ulong);
-	*((int*) p) = offload_client_idx;
-	p += sizeof(int);
-	*((int*) p) = forwho;
-	p += sizeof(int);
+	*((target_ulong *) p) = perm;
+	p += sizeof(target_ulong);
+	*((target_ulong*) p) = offload_client_idx;
+	p += sizeof(target_ulong);
+	*((target_ulong*) p) = forwho;
+	p += sizeof(target_ulong);
 
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)net_buffer;
 	fill_tcp_header(tcp_header, p - net_buffer - sizeof(struct tcp_msg_header), TAG_OFFLOAD_PAGE_REQUEST);
@@ -2295,7 +2300,7 @@ static void offload_send_page_request(int idx, target_ulong page_addr, abi_ulong
 	int res = autoSend(idx, net_buffer, p - net_buffer, 0);
 	if (res < 0)
 	{
-		printf( "[offload_send_page_request]\tpage request %lx sending to %ld failed\n", g2h(page_addr), idx);
+		printf( "[offload_send_page_request]\tpage request %lx sending to %ld failed\n", (target_ulong)g2h(page_addr), idx);
 		exit(0);
 	}
 	else if (res != p - net_buffer)
@@ -2317,7 +2322,7 @@ static void offload_send_page_wakeup(int idx, target_ulong page_addr)
 	autoSend(idx, buf, pp - buf, 0);
 	fprintf(stderr, "[offload_send_page_wakeup]\tsent page wakeup %lx to #%ld, packet#%ld\n", page_addr, idx, get_number());
 }
-static void offload_send_page_content(int idx, target_ulong page_addr, abi_ulong perm, char *content)
+static void offload_send_page_content(int idx, target_ulong page_addr, target_ulong perm, char *content)
 {
 	//PageMapDesc *pmd = get_pmd(page_addr);
 	///* If this is a fs page need to be processed and no one but us has the page now. */
@@ -2340,8 +2345,8 @@ static void offload_send_page_content(int idx, target_ulong page_addr, abi_ulong
 	*((target_ulong *) pp) = page_addr;
 	pp += sizeof(target_ulong);
 	//fprintf(stderr, "[offload_send_page_content]\t%ld\n", p - net_buffer);
-	*((abi_ulong *) pp) = perm;
-	pp += sizeof(abi_ulong);
+	*((target_ulong *) pp) = perm;
+	pp += sizeof(target_ulong);
 	//fprintf(stderr, "[offload_send_page_content]\t%ld\n", p - net_buffer);
 	memcpy(pp, content, TARGET_PAGE_SIZE);
 	pp += TARGET_PAGE_SIZE;
@@ -2359,12 +2364,12 @@ static void offload_process_mutex_done(void)
 {
 
 	p = net_buffer;
-	abi_ulong cas_addr = *(abi_ulong *) p;
-	p += sizeof(abi_ulong);
-	abi_ulong idx = *(abi_ulong *)p;
-	p += sizeof(abi_ulong);
-	abi_ulong nowv = *(abi_ulong *)p;
-	p += sizeof(abi_ulong);
+	target_ulong cas_addr = *(target_ulong *) p;
+	p += sizeof(target_ulong);
+	target_ulong idx = *(target_ulong *)p;
+	p += sizeof(target_ulong);
+	target_ulong nowv = *(target_ulong *)p;
+	p += sizeof(target_ulong);
 	int thread_idx = *(int*) p;
 	fprintf(stderr, "[offload_process_mutex_done]\tcas done signal %lp from #%ld->%ld, nowv %lx\n", cas_addr, idx, thread_idx, nowv);
 	pthread_mutex_lock(&g_cas_mutex);
@@ -2431,13 +2436,14 @@ static void offload_send_mutex_verified(int idx, int thread_idx)
 	fprintf(stderr, "[offload_send_cmpxchg_verified]\tsent cmpxchg verified to #%ld->%ld packet#%ld\n", idx, thread_idx, get_number());
 }
 
-static void offload_send_tid(int idx, abi_ulong tid)
+#ifdef AAA
+static void offload_send_tid(int idx, target_ulong tid)
 {
 	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
-	*((abi_ulong*)pp) = tid;
-	fprintf(stderr, "[offload_send_tid]\tsent tid = %lp to #%ld packet#%ld\n", *(abi_ulong*)pp, idx, get_number());
-	pp += sizeof(abi_ulong);
+	*((target_ulong*)pp) = tid;
+	fprintf(stderr, "[offload_send_tid]\tsent tid = %lp to #%ld packet#%ld\n", *(target_ulong*)pp, idx, get_number());
+	pp += sizeof(target_ulong);
 
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)buf;
 	fill_tcp_header(tcp_header, pp - buf - sizeof(struct tcp_msg_header), TAG_OFFLOAD_YOUR_TID);
@@ -2446,14 +2452,16 @@ static void offload_send_tid(int idx, abi_ulong tid)
 	autoSend(idx, buf, pp - buf, 0);
 	fprintf(stderr, "[offload_send_tid]\tsent tid = %lp to #%ld packet#%ld\n", tid, idx, get_number());
 }
+#endif
+
 
 static void offload_process_page_ack(void)
 {
 	p = net_buffer;
-	abi_ulong page_addr = *(abi_ulong *) p;
-	p += sizeof(abi_ulong);
-	abi_ulong perm = *(abi_ulong *) p;
-	p += sizeof(abi_ulong);
+	target_ulong page_addr = *(target_ulong *) p;
+	p += sizeof(target_ulong);
+	target_ulong perm = *(target_ulong *) p;
+	p += sizeof(target_ulong);
 #ifdef MASTER_PAGE_OPTIMIZE
 	return;
 #endif
@@ -2482,8 +2490,8 @@ static void offload_process_page_ack(void)
 	process_pmd(page_addr);
 }
 
-
-static void offload_send_page_perm(int idx, target_ulong page_addr, int perm)
+#ifdef AAA
+static void offload_send_page_perm(int idx, target_ulong page_addr, target_long perm)
 {
 
 
@@ -2492,8 +2500,8 @@ static void offload_send_page_perm(int idx, target_ulong page_addr, int perm)
 	*((target_ulong *) p) = page_addr;
 	p += sizeof(target_ulong);
 
-	*((int *) p) = perm;
-	p += sizeof(int);
+	*((target_long *) p) = perm;
+	p += sizeof(target_long);
 
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)net_buffer;
 	fill_tcp_header(tcp_header, p - net_buffer - sizeof(struct tcp_msg_header), TAG_OFFLOAD_PAGE_PERM);
@@ -2507,7 +2515,7 @@ static void offload_send_page_perm(int idx, target_ulong page_addr, int perm)
 
 	return;
 }
-
+#endif
 
 
 /*	revoke pages from worker
@@ -2517,12 +2525,12 @@ static void offload_send_page_perm(int idx, target_ulong page_addr, int perm)
 static void offload_process_page_content(void)
 {
 	p = net_buffer;
-	abi_ulong page_addr = *(abi_ulong *) p;
-	p += sizeof(abi_ulong);
-	abi_ulong perm = *(abi_ulong *) p;
-	p += sizeof(abi_ulong);
-	int forwho = *((int*) p);
-	p += sizeof(int);
+	target_ulong page_addr = *(target_ulong *) p;
+	p += sizeof(target_ulong);
+	target_ulong perm = *(target_ulong *) p;
+	p += sizeof(target_ulong);
+	target_long forwho = *((target_long*) p);
+	p += sizeof(target_long);
 
 	PageMapDesc *pmd = get_pmd(page_addr);
 
@@ -2543,7 +2551,7 @@ static void offload_process_page_content(void)
 				pmd->invalid_count--;
 				if (pmd->invalid_count<0)
 				{
-					printf( "[offload_process_page_content]\tWTHE HELL IS happening??invalid_cound = %ld\n", pmd->invalid_count);
+					printf( "[offload_process_page_content]\tWTHE HELL IS happening??invalid_cound = %d\n", pmd->invalid_count);
 					exit(-2);
 				}
 				offload_send_page_content(requestor_idx, page_addr, perm, p);
@@ -2552,7 +2560,7 @@ static void offload_process_page_content(void)
 
 			else if (requestor_idx == -1)
 			{
-				printf( "[offload_process_page_content]\tWTHE HELL IS happening??\n", page_addr, perm);
+				printf( "[offload_process_page_content]\tWTHE HELL IS happening??\n");
 				exit(123);
 			}
 		}
@@ -2589,15 +2597,15 @@ void* process_syscall_thread(void* syscall_pp)
 	}
 	struct syscall_param* syscall_p = (struct syscall_param*)syscall_pp;
 	CPUARMState* cpu_env = (CPUARMState*)syscall_p->cpu_env;
-	int num = syscall_p->num;
-	abi_long arg1 = syscall_p->arg1;
-	abi_long arg2 = syscall_p->arg2;
-	abi_long arg3 = syscall_p->arg3;
-	abi_long arg4 = syscall_p->arg4;
-	abi_long arg5 = syscall_p->arg5;
-	abi_long arg6 = syscall_p->arg6;
-	abi_long arg7 = syscall_p->arg7;
-	abi_long arg8 = syscall_p->arg8;
+	// int num = syscall_p->num;
+	target_long arg1 = syscall_p->arg1;
+	target_long arg2 = syscall_p->arg2;
+	target_long arg3 = syscall_p->arg3;
+	// target_long arg4 = syscall_p->arg4;
+	// target_long arg5 = syscall_p->arg5;
+	// target_long arg6 = syscall_p->arg6;
+	// target_long arg7 = syscall_p->arg7;
+	// target_long arg8 = syscall_p->arg8;
 	int idx = syscall_p->idx;
 	int thread_id = syscall_p->thread_id;
 
@@ -2625,22 +2633,22 @@ static void offload_process_syscall_request(void)
 
 	int num = *(int *)p;
 	p += sizeof(int);
-	abi_long arg1 = *((abi_long*) p);
-	p += sizeof(abi_long);
-	abi_long arg2 = *((abi_long*) p);
-	p += sizeof(abi_long);
-	abi_long arg3 = *((abi_long*) p);
-	p += sizeof(abi_long);
-	abi_long arg4 = *((abi_long*) p);
-	p += sizeof(abi_long);
-	abi_long arg5 = *((abi_long*) p);
-	p += sizeof(abi_long);
-	abi_long arg6 = *((abi_long*) p);
-	p += sizeof(abi_long);
-	abi_long arg7 = *((abi_long*) p);
-	p += sizeof(abi_long);
-	abi_long arg8 = *((abi_long*) p);
-	p += sizeof(abi_long);
+	target_long arg1 = *((target_long*) p);
+	p += sizeof(target_long);
+	target_long arg2 = *((target_long*) p);
+	p += sizeof(target_long);
+	target_long arg3 = *((target_long*) p);
+	p += sizeof(target_long);
+	target_long arg4 = *((target_long*) p);
+	p += sizeof(target_long);
+	target_long arg5 = *((target_long*) p);
+	p += sizeof(target_long);
+	target_long arg6 = *((target_long*) p);
+	p += sizeof(target_long);
+	target_long arg7 = *((target_long*) p);
+	p += sizeof(target_long);
+	target_long arg8 = *((target_long*) p);
+	p += sizeof(target_long);
 	int idx = *(int*) p;
 	p += sizeof(int);
 	int thread_id = *(int*)p;
@@ -2674,13 +2682,13 @@ static void offload_process_syscall_request(void)
 	}
 }
 
-static void offload_send_syscall_result(int idx, abi_long result, int thread_id)
+static void offload_send_syscall_result(int idx, target_long result, int thread_id)
 {
 	fprintf(stderr, "[offload_send_syscall_result]\tsending syscall result to #%ld->%ld with ret=%lp\n", idx, thread_id, result);
 	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
-	*((abi_long*)pp) = result;
-	pp += sizeof(abi_long);
+	*((target_long*)pp) = result;
+	pp += sizeof(target_long);
 	*((int*)pp) = thread_id;
 	pp += sizeof(int);
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)buf;
@@ -2691,27 +2699,27 @@ static void offload_send_syscall_result(int idx, abi_long result, int thread_id)
 }
 
 /* do_fork information */
-/* static int do_fork_remote(CPUArchState *env, unsigned int flags, abi_ulong newsp,
-                   abi_ulong parent_tidptr, target_ulong newtls,
-                   abi_ulong child_tidptr)
+/* static int do_fork_remote(CPUArchState *env, unsigned int flags, target_ulong newsp,
+                   target_ulong parent_tidptr, target_ulong newtls,
+                   target_ulong child_tidptr)
 */
-void offload_send_do_fork_info(int idx, unsigned int flags, abi_ulong newsp,
-                   abi_ulong parent_tidptr, target_ulong newtls,
-                   abi_ulong child_tidptr)
+void offload_send_do_fork_info(int idx, unsigned int flags, target_ulong newsp,
+                   target_ulong parent_tidptr, target_ulong newtls,
+                   target_ulong child_tidptr)
 {
 	fprintf(stderr, "[offload_send_do_fork_info]\tsending do fork info to #%ld\n", idx);
 	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
 	*((unsigned int*)pp) = flags;
 	pp += sizeof(unsigned int);
-	*((abi_ulong*)pp) = newsp;
-	pp += sizeof(abi_ulong);
-	*((abi_ulong*)pp) = parent_tidptr;
-	pp += sizeof(abi_ulong);
+	*((target_ulong*)pp) = newsp;
+	pp += sizeof(target_ulong);
+	*((target_ulong*)pp) = parent_tidptr;
+	pp += sizeof(target_ulong);
 	*((target_ulong*)pp) = newtls;
 	pp += sizeof(target_ulong);
-	*((abi_ulong*)pp) = child_tidptr;
-	pp += sizeof(abi_ulong);
+	*((target_ulong*)pp) = child_tidptr;
+	pp += sizeof(target_ulong);
 	    fprintf(stderr, "[do_fork_server_local]\t flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
                                                  flags, newsp, parent_tidptr, newtls, child_tidptr);
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)buf;
@@ -2735,12 +2743,12 @@ static void show_prefetch_list(int idx)
  * if so, return -1
  * else return 0
  */
-static int prefetch_check(abi_ulong page_addr, int idx)
+static int prefetch_check(target_ulong page_addr, int idx)
 {
 	fprintf(stderr, "[prefetch_check]\tchecking..page_addr %lp\n", page_addr);
 	show_prefetch_list(idx);
 	struct pgft_record *p = prefetch_table[idx].next; //pagefault node
-	abi_ulong beg, end;
+	target_ulong beg, end;
 	int i = 0;
 	while (p)
 	{
@@ -2761,7 +2769,7 @@ static int prefetch_check(abi_ulong page_addr, int idx)
 // for prefetch page for server
 //TODO weight how much does this cost
 //TODO exclusive send test & how much would it cost(mutex)
-static int prefetch_handler(abi_ulong page_addr, int idx)
+static int prefetch_handler(target_ulong page_addr, int idx)
 {
 	show_prefetch_list(idx);
     struct pgft_record *p = prefetch_table[idx].next;	//pagefault node
@@ -2850,7 +2858,7 @@ static int prefetch_handler(abi_ulong page_addr, int idx)
 	return ret;
 }
 
-void offload_master_send_page(abi_ulong page_addr, int perm, int idx)
+void offload_master_send_page(target_ulong page_addr, target_ulong perm, int idx)
 {
 	PageMapDesc_server *pmd = get_pmd_s(page_addr);
 	fprintf(stderr, "[offload_master_send_page]\tpage %lx, perm %ld, for %ld\n", page_addr, perm, idx);
@@ -2861,10 +2869,10 @@ void offload_master_send_page(abi_ulong page_addr, int perm, int idx)
 	char buf[TARGET_PAGE_SIZE * 4];
 	char *p = buf + sizeof(struct tcp_msg_header);
 	/* fill addr and perm */
-	*((abi_ulong *) p) = page_addr;
-    p += sizeof(abi_ulong);
-	*((abi_ulong *) p) = perm;
-	p += sizeof(abi_ulong);
+	*((target_ulong *) p) = page_addr;
+    p += sizeof(target_ulong);
+	*((target_ulong *) p) = perm;
+	p += sizeof(target_ulong);
     /* followed by page content (size = TARGET_PAGE_SIZE) */
 	fprintf(stderr, "[offload_master_send_pageDEBUG]\tPOINT1\n");
 	//TODO: 如果是2就直接disable了 如果是1就發送。
