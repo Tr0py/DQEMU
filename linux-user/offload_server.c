@@ -351,43 +351,7 @@ void exec_func(void)
 	 
 }
 
-// void *extra_exec_thread(void)
-// {
-// 	extern CPUArchState *env;
-// 	/* we create a new CPU instance. */
-// 	new_env = cpu_copy(env);
-// 	/* Init regs that differ from the parent.  */
-// 	cpu_clone_regs(new_env, newsp);
-// 	new_cpu = ENV_GET_CPU(new_env);
-// 	offload_mode = 6;
-// 	extern __thread int offload_thread_idx;
-// 	offload_thread_idx = 3;
-// 	fprintf(stderr, "[exec_func_init]\tWaiting for informations...\n");
-// 	fprintf(stderr, "[exec_func_init]\tStart Initializing... guest_base: %lx\n", guest_base);
-// 	p = net_buffer;
-// 	fprintf(stderr, "[exec_func_init]\tin exec func\n");
-// 	load_cpu();
-// 	load_memory_region();
-// 	load_brk();
-// 	load_binary();
-// 	// it's go time!
-// 	//fprintf(stderr, "this address: %lx\n", g2h(0x10324));
-// 	fprintf(stderr, "[exec_func_init]\tready to CPU_LOOP\n");
-// 	fprintf(stderr, "[exec_func_init]\tPC: %lp\n", env->regs[15]);	
-// 	fprintf(stderr, "[exec_func_init]\tregisters:\n");	
-// 	for (int i = 0; i < 16; i++)
-// 	{
-// 		fprintf(stderr, "[exec_func_init]\t%lp\n", env->regs[i]);
-// 	}
-// 	//target_disas(stderr, ENV_GET_CPU(env), env->regs[15], 100);
-// 	//while (1) {;}
-// 	rcu_register_thread();
-// 	tcg_register_thread();
-// 	//pthread_mutex_unlock(&socket_mutex);
-// 	cpu_loop(env);
-// 	// here this thread reaches an end
-// 	return NULL;
-// }
+
 /* For extra exec. */
 void exec_func_init(void)
 {
@@ -416,8 +380,6 @@ void exec_func_init(void)
 
 	fprintf(stderr, "[exec_func_init]\tStart Initializing... guest_base: %lx\n", guest_base);
 
-	
-	
 	p = net_buffer;
 	fprintf(stderr, "[exec_func_init]\tin exec func\n");
 	load_cpu();
@@ -432,18 +394,8 @@ void exec_func_init(void)
 	//fprintf(stderr, "this address: %lx\n", g2h(0x10324));
 	fprintf(stderr, "[exec_func_init]\tready to CPU_LOOP\n");
 
-	// fprintf(stderr, "[exec_func_init]\tPC: %lp\n", thread_env->regs[15]);
-	
-	
 	fprintf(stderr, "[exec_func_init]\tregisters:\n");
 	
-	// for (int i = 0; i < 16; i++)
-	// {
-	// 	fprintf(stderr, "[exec_func_init]\t%lp\n", thread_env->regs[i]);
-	// }
-	//target_disas(stderr, ENV_GET_CPU(env), env->regs[15], 100);
-	//while (1) {;}
-
 	rcu_register_thread();
 	tcg_register_thread();
 	ncount++;
@@ -453,7 +405,7 @@ void exec_func_init(void)
 	pthread_cond_broadcast(&exec_func_init_cond);
 	pthread_mutex_unlock(&exec_func_init_mutex);
 
-	fprintf(stderr, "checkpint before cpu_loop\n");
+	fprintf(stderr, "checkpoint before cpu_loop\n");
 	//pthread_mutex_unlock(&socket_mutex);
 	cpu_loop(thread_env);
 	// here this thread reaches an end
@@ -494,44 +446,29 @@ void * cpu_killer(void* param)
 /* create execution thread */
 static void offload_process_start(void)
 {
-	
 	static int count = 0;
 	pthread_t exec_thread;
 	fprintf(stderr, "[offload_process_start]\tcreate exec thread\n");
-	if (count == 0 && 0) {
-		// pthread_create(&exec_thread, NULL, exec_func, NULL);
-		pthread_mutex_lock(&main_exec_mutex);
-		main_exec_flag = 1;
-		pthread_cond_broadcast(&main_exec_cond);
-		pthread_mutex_unlock(&main_exec_mutex);
-		count++;
+
+	pthread_mutex_lock(&exec_func_init_mutex);
+	while (exec_ready_to_init != 1) {
+		pthread_cond_wait(&exec_func_init_cond, &exec_func_init_mutex);
 	}
-	else {
-		pthread_mutex_lock(&exec_func_init_mutex);
-		while (exec_ready_to_init != 1) {
-			pthread_cond_wait(&exec_func_init_cond, &exec_func_init_mutex);
-		}
-		exec_ready_to_init = 2;
-		pthread_cond_broadcast(&exec_func_init_cond);
-		fprintf(stderr, "[offload_process_start]\tWake up please! %ld\n", exec_ready_to_init);
-		pthread_mutex_unlock(&exec_func_init_mutex);
-		// pthread_create(&exec_thread, NULL, &extra_exec_thread, NULL);
-		
-	}
+	exec_ready_to_init = 2;
+	pthread_cond_broadcast(&exec_func_init_cond);
+	fprintf(stderr, "[offload_process_start]\tWake up please! %ld\n", exec_ready_to_init);
+	pthread_mutex_unlock(&exec_func_init_mutex);
+	// pthread_create(&exec_thread, NULL, &extra_exec_thread, NULL);
+
 	fprintf(stderr, "[offload_process_start]\texec thread created\n");
-	{
-		pthread_mutex_lock(&exec_func_init_mutex);
-		while (exec_ready_to_init != 3) {
-			pthread_cond_wait(&exec_func_init_cond, &exec_func_init_mutex);
-		}
-		fprintf(stderr, "[offload_process_start]\tInit done! %ld\n", exec_ready_to_init);
-		pthread_mutex_unlock(&exec_func_init_mutex);
+
+	pthread_mutex_lock(&exec_func_init_mutex);
+	while (exec_ready_to_init != 3) {
+		pthread_cond_wait(&exec_func_init_cond, &exec_func_init_mutex);
 	}
-	/*
-	pthread_t killer_thread;
-	pthread_create(&exec_thread, NULL, cpu_killer, (void*)&exec_thread);
-	*/
-	//pthread_join(exec_thread, NULL);
+	fprintf(stderr, "[offload_process_start]\tInit done! %ld\n", exec_ready_to_init);
+	pthread_mutex_unlock(&exec_func_init_mutex);
+
 	
 }
 
@@ -1045,17 +982,7 @@ static void offload_server_daemonize(void)
 	while (1)
 	{
 		
-		/*if (offload_server_idx == 0)
-		{
-			int res = recv(client_socket, net_buffer, 9999, 0);
-			fprintf(stderr, "\nrecv: %ld\n", res);
-			exit(0);
-		}*/
 		fprintf(stderr, "[offload_server_daemonize]\twaiting for new message\n");
-		
-		//fprintf(stderr, "count addr: %lx\n", g2h(0x7ae34));
-
-		//int res = recv(client_socket, net_buffer, sizeof(struct tcp_msg_header), MSG_WAITALL);
 		try_recv(sizeof(struct tcp_msg_header));
 		fprintf(stderr, "[offload_server_daemonize]\tgot a new message #%ld\n", get_number());
 		int tag = get_tag();

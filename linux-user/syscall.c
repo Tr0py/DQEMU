@@ -6574,13 +6574,7 @@ void *clone_func_server_local(void *arg)
     cpu = ENV_GET_CPU(env);
     thread_cpu = cpu;
     ts = (TaskState *)cpu->opaque;
-    // info->tid = gettid();
-    // task_settid(ts);
-    // if (info->child_tidptr)
-    //     put_user_u32(info->tid, info->child_tidptr);
-    // if (info->parent_tidptr)
-    //     put_user_u32(info->tid, info->parent_tidptr);
-    /* Enable signals.  */
+
     sigprocmask(SIG_SETMASK, &info->sigmask, NULL);
     /* Signal to the parent that we're ready.  */
 
@@ -6593,35 +6587,6 @@ void *clone_func_server_local(void *arg)
     extern void exec_func_init(void);
     qemu_log("[clone_func_server_local]\tEntering init...\n");
 
-    // /*
-    //  * Now that page sizes are configured in tcg_exec_init() we can do
-    //  * proper page alignment for guest_base.
-    //  */
-	// extern unsigned long guest_base;
-    // extern unsigned long reserved_va;
-    // extern int have_guest_base;
-    // extern unsigned long init_guest_space(unsigned long host_start,
-    //                            unsigned long host_size,
-    //                            unsigned long guest_start,
-    //                            bool fixed);
-	// guest_base = 0x3c00f000;
-    // guest_base = HOST_PAGE_ALIGN(guest_base);
-
-    // if (reserved_va || have_guest_base) {
-    //     guest_base = init_guest_space(guest_base, reserved_va, 0,
-    //                                   have_guest_base);
-    //     if (guest_base == (unsigned long)-1) {
-    //         fprintf(stderr, "Unable to reserve 0x%lx bytes of virtual address "
-    //                 "space for use as guest address space (check your virtual "
-    //                 "memory ulimit setting or reserve less using -R option)\n",
-    //                 reserved_va);
-    //         exit(EXIT_FAILURE);
-    //     }
-
-    //     // if (reserved_va) {
-    //     //     mmap_next_start = reserved_va;
-    //     // }
-    // }
     exec_func_init();
     cpu_loop(env);
     /* never exits */
