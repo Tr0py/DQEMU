@@ -91,7 +91,11 @@ extern void end_exclusive(void);
 static void offload_server_process_fs_page(void);
 static void offload_server_process_page_wakeup(void);
 
+#ifdef TARGET_AARCH64
+PageMapDesc_server page_map_table_s[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE][L3_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section_server"))) __attribute__ ((aligned(4096))) = {0};
+#else
 PageMapDesc_server page_map_table_s[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section_server"))) __attribute__ ((aligned(4096))) = {0};
+#endif
 PageMapDesc_server *get_pmd_s(target_ulong page_addr);
 
 #endif

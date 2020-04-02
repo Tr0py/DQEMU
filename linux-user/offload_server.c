@@ -26,7 +26,7 @@ pthread_mutex_t syscall_clone_mutex;
 pthread_cond_t syscall_clone_cond;
 static int futex_uaddr_changed_flag; static pthread_mutex_t futex_mutex; static pthread_cond_t futex_cond;
 static int exec_ready_to_init; static pthread_mutex_t exec_func_init_mutex; static pthread_cond_t exec_func_init_cond;
-static void* exec_segfault_addr[MAX_OFFLOAD_THREAD_IN_NODE]; static void* syscall_segfault_addr;
+static target_ulong exec_segfault_addr[MAX_OFFLOAD_THREAD_IN_NODE]; static target_ulong syscall_segfault_addr;
 static int pgfault_time_sum;
 static int syscall_time_sum;
 pthread_mutex_t page_process_mutex;
@@ -46,8 +46,15 @@ void offload_server_pmd_init(void)
 	{
 		for (int j = 0; j < L2_MAP_TABLE_SIZE; j++)
 		{
+#ifdef TARGET_AARCH64
+			for (int k = 0; k < L3_MAP_TABLE_SIZE;k++)
+			{
+				page_map_table_s[i][j][k].cur_perm = init_val;
+			}
+#else
 			page_map_table_s[i][j].cur_perm = init_val;
 			//fprintf(stderr, "%ld", page_map_table[i][j].owner_set.size);
+#endif
 		}
 	}
 }
@@ -56,9 +63,16 @@ inline PageMapDesc_server* get_pmd_s(target_ulong page_addr)
 {
 	page_addr = PAGE_OF(page_addr);
 	page_addr = page_addr >> MAP_PAGE_BITS;
+#ifdef TARGET_AARCH64
+	int index1 = ((page_addr >> L2_MAP_TABLE_BITS) >> L3_MAP_TABLE_BITS) & (L1_MAP_TABLE_SIZE - 1);
+	int index2 = (page_addr >> L3_MAP_TABLE_BITS) & (L2_MAP_TABLE_SIZE - 1);
+	int index3 = page_addr & (L3_MAP_TABLE_SIZE - 1);
+	PageMapDesc_server *pmd = &page_map_table_s[index1][index2][index3];
+#else
 	int index1 = (page_addr >> L1_MAP_TABLE_SHIFT) & (L1_MAP_TABLE_SIZE - 1);
 	int index2 = page_addr & (L2_MAP_TABLE_SIZE - 1);
 	PageMapDesc_server *pmd = &page_map_table_s[index1][index2];
+#endif
 	return pmd;
 }
 /* get packet_counter of net_buffer */
@@ -524,7 +538,7 @@ static void offload_server_process_mutex_verified(void)
 static void offload_server_send_page_request(target_ulong page_addr, target_ulong perm)
 {
 	//pthread_mutex_lock(&socket_mutex);
-	fprintf(stderr, ">>>>>>>>> exec# %ld guest_base: %lx\n", offload_server_idx, guest_base);
+	fprintf(stderr, ">>>>>>>>> exec# %d guest_base: %lx\n", offload_server_idx, guest_base);
 	char buf[TARGET_PAGE_SIZE * 4];
 	/* prepare space for head */
 	char *pp = buf + sizeof(struct tcp_msg_header);
@@ -543,7 +557,7 @@ static void offload_server_send_page_request(target_ulong page_addr, target_ulon
 		printf( "[offload_server_send_page_request]\tsent page %lx request failed\n", page_addr);
 		exit(0);
 	}
-	fprintf(stderr, "[offload_server_send_page_request]\tsent page %lx request, perm: %s, packet#%ld\n", page_addr, perm==1?"READ":"READ|WRITE", get_number());
+	fprintf(stderr, "[offload_server_send_page_request]\tsent page %lx request, perm: %s, packet#%d\n", page_addr, perm==1?"READ":"READ|WRITE", get_number());
 	//pthread_mutex_unlock(&socket_mutex);
 }
 
@@ -739,7 +753,6 @@ void offload_send_page_request_and_wait(target_ulong page_addr, int perm)
 	}
 	if (offload_mode != 4)
 	{		
-		
 		pthread_mutex_lock(&page_recv_mutex[offload_thread_idx]);
 		//!!! Dangerous! If others have sent this and is waiting, just don not send again. But race condition could happen.
 		int have_already_requested = 0;
@@ -800,10 +813,9 @@ int offload_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc)
 #endif
     siginfo_t *info = pinfo;
     ucontext_t *uc = (ucontext_t *)puc;
-    void* host_addr = info->si_addr;
+    target_ulong host_addr = info->si_addr;
     //TODO ... do h2g on the host_addr to get the address of the segfault
-	
-    unsigned long  guest_addr = h2g(host_addr);
+    target_ulong  guest_addr = h2g(host_addr);
 	fprintf(stderr, "[offload_segfault_handler]\tguest addr is %lp, host_addr is %lp, pte-0 %lp, pte-1 %lp, pte-2 %lp, VP-2 %lp, VP-1%lp\n", 
 			guest_addr, host_addr, pt_index(host_addr, 0), pt_index(host_addr, 1), pt_index(host_addr, 2), pt_index(VPTPTR, 2), pt_index(VPTPTR, 1));
 #define PC_sig(context)       ((context)->uc_mcontext.gregs[REG_RIP])
@@ -813,13 +825,13 @@ int offload_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc)
 	
 
 	target_ulong page_addr = guest_addr & TARGET_PAGE_MASK;
-    //fprintf(stderr, "\nHost instruction address is %lp\n", uc->uc_mcontext.gregs[REG_RIP]);
+    fprintf(stderr, "\nHost instruction address is %lp\n", uc->uc_mcontext.gregs[REG_RIP]);
     int is_write = ((uc->uc_mcontext.gregs[REG_ERR] & 0x2) != 0);
 	//TODO !!!!!!!!!!!!!!!DEBUG
 	//is_write = 1;
 	fprintf(stderr, "[offload_segfault_handler]\tsegfault on page addr: %lx, perm: %s\n", page_addr, is_write?"WRITE|READ":"READ");
 	// sum time on pagefault
-	offload_send_page_request_and_wait(page_addr, is_write+1);
+	offload_send_page_request_and_wait(page_addr, is_write + 1);
 	//get_client_page(is_write, guest_page);
 	// send page request, sleep until content is sent back.
 	//fprintf(stderr, "[offload_segfault_handler]\t%lp value is %lp\n", guest_addr, *(target_ulong*)(g2h(guest_addr)));
@@ -923,7 +935,7 @@ static void offload_server_daemonize(void)
 {
 	fprintf(stderr, "[offload_server_daemonize]\tstart to daemonize\n");
 	
-	fprintf(stderr, ">>>>>>>>>>>> server# %ld guest_base: %lx\n", offload_server_idx, guest_base);
+	fprintf(stderr, ">>>>>>>>>>>> server# %d guest_base: %lx\n", offload_server_idx, guest_base);
 	struct sockaddr_in client_addr;
 	socklen_t client_addr_size = sizeof(client_addr);
 	client_socket = accept(sktfd, (struct sockaddr*)&client_addr, &client_addr_size);
@@ -1052,20 +1064,14 @@ static void offload_server_daemonize(void)
 }
 
 extern void* offload_center_client_start(void *arg);
+
 void* offload_center_server_start(void *arg)
 {
-	
 	offload_mode = 1;
 	offload_server_init();
 	fprintf(stderr, "[offload_center_server_start]\tcenter server guest_base: %lx\n", guest_base);
 	pthread_t offload_center_client_thread;
-
-
-
 	pthread_create(&offload_center_client_thread, NULL, offload_center_client_start, arg);	
-
-
-	
 	offload_server_daemonize();
 	return NULL;
 }
@@ -1237,19 +1243,13 @@ target_long pass_syscall(void *cpu_env, int num, target_long arg1,
                     target_long arg5, target_long arg6, target_long arg7,
                     target_long arg8)
 {
-	// if ((num == TARGET_NR_futex)&&
-	// 	(arg2 == FUTEX_PRIVATE_FLAG|FUTEX_WAIT) && 
-	// 	(offload_server_idx > 0))// futex wait from server, ignore
-	// {
-	// 	fprintf(stderr, "[arm-cpu]\tI am #%ld ignoring..futex\n", offload_server_idx);
-	// 	return 0;
-	// 	exit(-1);
-	// }
-	// fprintf(stderr, "[pass_syscall]\targ2 = %ld\n",arg2);
+
 	fprintf(stderr, "[pass_syscall]\tpassing syscall to center %ld->%ld\n", offload_server_idx, offload_thread_idx);
 	// mark1 syscall time sum
+#ifdef PFTIME
 	struct timeb t, tend;
     ftime(&t);
+#endif
 	extern void print_syscall(int num,
               target_long arg1, target_long arg2, target_long arg3,
               target_long arg4, target_long arg5, target_long arg6);
@@ -1286,7 +1286,7 @@ target_long pass_syscall(void *cpu_env, int num, target_long arg1,
 	pp += sizeof(int);
 	*((int*)pp) = (int)offload_thread_idx;
 	pp += sizeof(int);
-	fprintf(stderr, "[pass_syscall]\tnum:%ld, arg1: %lp, arg2:%lp, arg3:%lp, arg4:%lp, arg5:%lp, arg6:%lp\n", num, arg1, arg2, arg3,arg4,arg5,arg6);
+	fprintf(stderr, "[pass_syscall]\tnum:%ld, arg1: %lp, arg2:%lp, arg3:%lp, arg4:%lp, arg5:%lp, arg6:%lp\n", num, arg1, arg2, arg3, arg4, arg5, arg6);
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *) buf;
 	fill_tcp_header(tcp_header, pp - buf - sizeof(struct tcp_msg_header), TAG_OFFLOAD_SYSCALL_REQ);
 
@@ -1308,12 +1308,16 @@ target_long pass_syscall(void *cpu_env, int num, target_long arg1,
 	target_long result = result_global[offload_thread_idx];
 	fprintf(stderr, "[pass_syscall]\returning result %lp!\n", result);
 	// calculate time diff
+
+#ifdef PFTIME
 	ftime(&tend);
 	int secDiff = tend.time - t.time;
 	secDiff *= 1000;
 	secDiff += (tend.millitm - t.millitm);
 	syscall_time_sum += secDiff;
 	fprintf(stderr, "[pass_syscall]\tbegin: %ld:%ld; end: %ld:%ld, used: %ldms, now total is: %ldms", t.time, t.millitm, tend.time, tend.millitm, secDiff, syscall_time_sum);
+#endif
+
 	fprintf(stderr, "[pass_syscall]\returning result %lp!\n", result);
 	// finally crash here in server
 	return result;
@@ -1449,7 +1453,7 @@ static int autoSend(int Fd,char* buf, int length, int flag)
 			}
 			else
 			{
-				fprintf(stderr, "[autoSend]\tsend failed, errno: %ld\n", res);
+				fprintf(stderr, "[autoSend]\tsend failed, errno: %d\n", res);
 				perror("autoSend");
 				exit(0);
 			}

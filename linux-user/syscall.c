@@ -8956,34 +8956,8 @@ target_long do_syscall(void *cpu_env, int num, target_long arg1,
 
         cpu_list_lock();
 
-        /* Yes, but we do the following. */
-        // if (CPU_NEXT(first_cpu)) {
-        //     TaskState *ts;
-
-        //     /* Remove the CPU from the list.  */
-        //     QTAILQ_REMOVE(&cpus, cpu, node);
-
-        //     cpu_list_unlock();
-
-        //     ts = cpu->opaque;
-        //     if (ts->child_tidptr) {
-        //         put_user_u32(0, ts->child_tidptr);
-        //         sys_futex(g2h(ts->child_tidptr), FUTEX_WAKE, INT_MAX,
-        //                   NULL, NULL, 0);
-        //     }
-        //     thread_cpu = NULL;
-        //     object_unref(OBJECT(cpu));
-        //     g_free(ts);
-        //     //fprintf(stderr,"NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
-        //     rcu_unregister_thread();
-        //     pthread_exit(NULL);
-        // }
-
         cpu_list_unlock();
         preexit_cleanup(cpu_env, arg1);
-        // thread ends, avoid terminating 
-        //will result in process termination, never do that
-        //_exit(arg1);
 
         /* tell center that we exited */
         TaskState *ts;
@@ -9001,7 +8975,7 @@ target_long do_syscall(void *cpu_env, int num, target_long arg1,
                                                         target_long arg2, target_long arg3, target_long arg4,
                                                         target_long arg5, target_long arg6, target_long arg7,
                                                         target_long arg8);
-            pass_syscall(cpu_env,TARGET_NR_futex,ts->child_tidptr, FUTEX_WAKE, INT_MAX,
+            pass_syscall(cpu_env, TARGET_NR_futex, ts->child_tidptr, FUTEX_WAKE, INT_MAX,
                         1, 1, 1, 0, 1);
         }
         thread_cpu = NULL;
@@ -13142,7 +13116,7 @@ target_long do_syscall(void *cpu_env, int num, target_long arg1,
                                                         target_long arg2, target_long arg3, target_long arg4,
                                                         target_long arg5, target_long arg6, target_long arg7,
                                                         target_long arg8);
-            ret = pass_syscall(cpu_env,TARGET_NR_futex,arg1, arg2, arg3,
+            ret = pass_syscall(cpu_env, TARGET_NR_futex, arg1, arg2, arg3,
                         arg4, arg5, arg6, 0, 0);
 
 

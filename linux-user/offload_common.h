@@ -108,22 +108,29 @@ extern __thread int offload_mode;
 #define VIRT_ADDR_SPACE_BITS 32
 #define PAGE_SIZE 0x1000
 
-#define PAGE_MASK 0xfffff000
+#define PAGE_MASK TARGET_PAGE_MASK
 #define PAGE_ALIGN(addr) (((addr) + PAGE_SIZE - 1) & PAGE_MASK)
 
 
-#define PAGE_OF(addr) ((addr >> 10) << 10)
+#define PAGE_OF(addr) ((addr >> L1_MAP_TABLE_BITS) << L1_MAP_TABLE_BITS)
 /*
  * Currently, we only support offloading 32 bit ARM app to x86-64 server.
  * Both of them use 4K page size (normal), so we only need two level mapping tables.
  */
+#ifdef TARGET_AARCH64
+#define L1_MAP_TABLE_BITS 9
+#define L1_MAP_TABLE_SIZE (1 << L1_MAP_TABLE_BITS)
+#define L2_MAP_TABLE_BITS 9
+#define L2_MAP_TABLE_SIZE (1 << L2_MAP_TABLE_BITS)
+#define L3_MAP_TABLE_BITS 9
+#define L3_MAP_TABLE_SIZE (1 << L3_MAP_TABLE_BITS)
+#else
 #define L1_MAP_TABLE_BITS 10
 #define L1_MAP_TABLE_SIZE (1 << L1_MAP_TABLE_BITS)
-
 #define L2_MAP_TABLE_BITS 10
 #define L2_MAP_TABLE_SIZE (1 << L2_MAP_TABLE_BITS)
-
 #define L1_MAP_TABLE_SHIFT (VIRT_ADDR_SPACE_BITS - 12 - L1_MAP_TABLE_BITS)
+#endif
 
 /* For dynamic page grain. use */
 /* PAGE_SIZE / MIN_PAGE_GRAIN = MAX_PAGE_SPLIT */
