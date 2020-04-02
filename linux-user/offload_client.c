@@ -2672,19 +2672,17 @@ static void offload_send_syscall_result(int idx, target_long result, int thread_
 }
 
 /* do_fork information */
-/* static int do_fork_remote(CPUArchState *env, unsigned int flags, target_ulong newsp,
-                   target_ulong parent_tidptr, target_ulong newtls,
-                   target_ulong child_tidptr)
-*/
+
+
 void offload_send_do_fork_info(int idx, unsigned int flags, target_ulong newsp,
                    target_ulong parent_tidptr, target_ulong newtls,
                    target_ulong child_tidptr)
 {
-	fprintf(stderr, "[offload_send_do_fork_info]\tsending do fork info to #%ld\n", idx);
+	fprintf(stderr, "[offload_send_do_fork_info]\tsending do fork info to #%d\n", idx);
 	char buf[TARGET_PAGE_SIZE * 4];
 	char *pp = buf + sizeof(struct tcp_msg_header);
-	*((unsigned int*)pp) = flags;
-	pp += sizeof(unsigned int);
+	*((target_ulong*)pp) = flags;
+	pp += sizeof(target_ulong);
 	*((target_ulong*)pp) = newsp;
 	pp += sizeof(target_ulong);
 	*((target_ulong*)pp) = parent_tidptr;
@@ -2693,8 +2691,10 @@ void offload_send_do_fork_info(int idx, unsigned int flags, target_ulong newsp,
 	pp += sizeof(target_ulong);
 	*((target_ulong*)pp) = child_tidptr;
 	pp += sizeof(target_ulong);
-	    fprintf(stderr, "[do_fork_server_local]\t flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
+
+	fprintf(stderr, "[send_do_fork_info]\t flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
                                                  flags, newsp, parent_tidptr, newtls, child_tidptr);
+
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *)buf;
 	fill_tcp_header(tcp_header, pp - buf - sizeof(struct tcp_msg_header), TAG_OFFLOAD_FORK_INFO);
 	autoSend(idx, buf, pp - buf, 0);

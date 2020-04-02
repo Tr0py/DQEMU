@@ -381,7 +381,6 @@ void exec_func_init(void)
 	fprintf(stderr, "[exec_func_init]\tStart Initializing... guest_base: %lx\n", guest_base);
 
 	p = net_buffer;
-	fprintf(stderr, "[exec_func_init]\tin exec func\n");
 	load_cpu();
 	//sleep(100000);
 	// copy the start function address
@@ -391,11 +390,7 @@ void exec_func_init(void)
 		load_binary();
 	}
 	// it's go time!
-	//fprintf(stderr, "this address: %lx\n", g2h(0x10324));
 	fprintf(stderr, "[exec_func_init]\tready to CPU_LOOP\n");
-
-	fprintf(stderr, "[exec_func_init]\tregisters:\n");
-	
 	rcu_register_thread();
 	tcg_register_thread();
 	ncount++;
@@ -404,13 +399,9 @@ void exec_func_init(void)
 	exec_ready_to_init = 3;
 	pthread_cond_broadcast(&exec_func_init_cond);
 	pthread_mutex_unlock(&exec_func_init_mutex);
-
-	fprintf(stderr, "checkpoint before cpu_loop\n");
 	//pthread_mutex_unlock(&socket_mutex);
 	cpu_loop(thread_env);
 	// here this thread reaches an end
-	
-		
 	return NULL;
 	 
 }
@@ -581,17 +572,7 @@ static void offload_process_page_request(void)
 	}
 	mprotect(g2h(page_addr), TARGET_PAGE_SIZE, PROT_READ);//prevent writing at this time!!
 
-	//if (page_addr == 0x78000)
-	//{
-	//	fprintf(stderr, "[offload_process_page_request]\tdebug\t0x78f4c = %ld", *(int *)(g2h(0x78f4c)));
-	//}
-	///* debug pthread_mutex_struct */
-	//if (page_addr == 0x78000)
-	//{
-	//	fprintf(stderr, "[offload_process_page_request]\tdebug\t__lock0x77f34 = %ld", *(int *)(g2h(0x78f34)));
-	//	fprintf(stderr, "[offload_process_page_request]\tdebug\t__count0x77f38 = %ld", *(int *)(g2h(0x78f38)));
-	//	fprintf(stderr, "[offload_process_page_request]\tdebug\t__owner0x77f40 = %ld", *(int *)(g2h(0x78f3C)));
-	//}
+	
 	offload_send_page_content(page_addr, perm, forwho);
 	fprintf(stderr, "[offload_process_page_request]\tsent content\n", page_addr, perm);
 	/*	if required permission is WRITE|READ,
@@ -633,18 +614,11 @@ static void offload_process_page_content(void)
 	target_ulong perm = *((target_ulong *) p);
 	p += sizeof(target_ulong);
 	fprintf(stderr, "[offload_process_page_content]\tcontent\n");
-	// fprintf(stderr, "[offload_process_page_content]\tcontent: %ld %ld\n", *((uint64_t *) p), *((uint64_t *) p + 555));
 
 	/* protect page and copy content to page */
 	mprotect(g2h(page_addr), TARGET_PAGE_SIZE, PROT_READ | PROT_WRITE);
 	memcpy(g2h(page_addr), p, TARGET_PAGE_SIZE);
-	/* debug pthread_mutex_t */
-	// if (page_addr == 0x78000)
-	// {
-	// 	fprintf(stderr, "[offload_process_page_content]\tdebug\t__lock0x77f34 = %ld", *(int *)(g2h(0x78f34)));
-	// 	fprintf(stderr, "[offload_process_page_content]\tdebug\t__count0x77f38 = %ld", *(int *)(g2h(0x78f38)));
-	// 	fprintf(stderr, "[offload_process_page_content]\tdebug\t__owner0x77f40 = %ld", *(int *)(g2h(0x78f3C)));
-	// }
+	
 	p += TARGET_PAGE_SIZE;
 	if (perm == 2)
 	{
@@ -704,18 +678,13 @@ static void offload_send_page_content(target_ulong page_addr, target_ulong perm,
 	*((target_long*) p) = forwho;
 	p += sizeof(target_long);
     /* followed by page content (size = TARGET_PAGE_SIZE) */
-	fprintf(stderr, "[DEBUG]\tPOINT1\n");
 	//TODO: 如果是2就直接disable了 如果是1就發送。
 	//mprotect(g2h(page_addr), TARGET_PAGE_SIZE, PROT_READ | PROT_WRITE);
-	fprintf(stderr, "[DEBUG]\tPOINT1.5\n");
-	fprintf(stderr, "value : %lx\n", *(target_long *)g2h(page_addr));
 	memcpy(p, g2h(page_addr), TARGET_PAGE_SIZE);
-	fprintf(stderr, "[DEBUG]\tPOINT2\n");
     p += TARGET_PAGE_SIZE;
 	/* fill head */
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *) buf;
 	fill_tcp_header(tcp_header, p - buf - sizeof(struct tcp_msg_header), TAG_OFFLOAD_PAGE_CONTENT);
-	fprintf(stderr, "[DEBUG]\tPOINT3\n");
 	int res = autoSend(client_socket, buf, p - buf, 0);
 	if (res < 0)
 	{
@@ -765,7 +734,6 @@ void offload_send_page_request_and_wait(target_ulong page_addr, int perm)
 	pthread_mutex_lock(&page_process_mutex);
 	PageMapDesc_server *pmd = get_pmd_s(page_addr);
 	if (pmd->cur_perm >= perm) {
-		//fprintf(stderr, "[offload_send_page_request_and_wait]\tI think we already have the page.\n");
 		pthread_mutex_unlock(&page_process_mutex);
 		return;
 	}
@@ -842,17 +810,8 @@ int offload_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc)
 	fprintf(stderr, "[offload_segfault_handler]\tREG_RIP=%lp\n",
 					PC_sig(uc));
 #define UC_REG(context, reg)	((context)->uc_mcontext.gregs[reg])
-	/* REG_10 stores the load/store address. 
-	 * which is REG_RBP
-	 * REG_11 stores the load/store value, which is REG_RBX.
-	 */
-	//UC_REG(uc, 10) = 0x1000;
-	//UC_REG(uc, REG_RIP) = 
-	//for (int i = 0; i < __NGREG; i++) {
-	//	fprintf(stderr, "[offload_segfault_handler]\tREG_%ld=%lp\n",
-	//					i, UC_REG(uc, i));
+	
 
-	//}
 	target_ulong page_addr = guest_addr & TARGET_PAGE_MASK;
     //fprintf(stderr, "\nHost instruction address is %lp\n", uc->uc_mcontext.gregs[REG_RIP]);
     int is_write = ((uc->uc_mcontext.gregs[REG_ERR] & 0x2) != 0);
@@ -1084,7 +1043,7 @@ static void offload_server_daemonize(void)
 				break;
 
 			default:
-				printf("[offload_server_daemonize]\tunkown tag: %ld\n", tag);
+				printf("[offload_server_daemonize]\tunkown tag: %d\n", tag);
 				exit(0);
 				break;
 				
@@ -1210,11 +1169,11 @@ static void offload_server_send_futex_wait_request(target_ulong guest_addr, int 
 	*((target_ulong *) p) = guest_addr;
     p += sizeof(target_ulong);
 	
-	*((int *) p) = op;
-	p += sizeof(int);
+	*((target_long *) p) = op;
+	p += sizeof(target_long);
 	fprintf(stderr, "futex op: %ld\n", op);
-	*((int *) p) = val;
-	p += sizeof(int);
+	*((target_long *) p) = val;
+	p += sizeof(target_long);
 	
 	*((target_ulong *) p) = timeout;
     p += sizeof(target_ulong);
@@ -1222,8 +1181,8 @@ static void offload_server_send_futex_wait_request(target_ulong guest_addr, int 
 	*((target_ulong *) p) = uaddr2;
     p += sizeof(target_ulong);
 	
-	*((int *) p) = val3;
-	p += sizeof(int);
+	*((target_long *) p) = val3;
+	p += sizeof(target_long);
 	
 	struct tcp_msg_header *tcp_header = (struct tcp_msg_header *) net_buffer;
 	fill_tcp_header(tcp_header, p - net_buffer - sizeof(struct tcp_msg_header), TAG_OFFLOAD_FUTEX_WAIT_REQUEST);
@@ -1270,8 +1229,6 @@ int offload_server_futex_wake(target_ulong uaddr, int op, int val, target_ulong 
 	futex_uaddr_changed_flag = 1;
 	pthread_cond_broadcast(&futex_cond);
 	pthread_mutex_unlock(&futex_mutex);
-
-	
 	return 0;
 }
 
@@ -1409,8 +1366,8 @@ static void offload_process_tid(void)
 static void offload_process_fork_info(void)
 {
 	p = net_buffer;
-	unsigned int flags = *((unsigned int*)p);
-	p += sizeof(unsigned int);
+	target_ulong flags = *((target_ulong*)p);
+	p += sizeof(target_ulong);
 	target_ulong newsp = *((target_ulong*)p);
 	p += sizeof(target_ulong);
 	target_ulong parent_tidptr = *((target_ulong*)p);
@@ -1420,7 +1377,9 @@ static void offload_process_fork_info(void)
 	target_ulong child_tidptr = *((target_ulong*)p);
 	p += sizeof(target_ulong);
 
-	fprintf(stderr,"[offload_process_fork_info]\tdoing fork local\n");
+	fprintf(stderr, "[do_process_fork_info]\t flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
+                                                 flags, newsp, parent_tidptr, newtls, child_tidptr);
+												 
 	extern int do_fork_server_local(CPUArchState *env, unsigned int flags, target_ulong newsp,
                    target_ulong parent_tidptr, target_ulong newtls,
                    target_ulong child_tidptr);
@@ -1445,14 +1404,14 @@ static void try_recv(int size)
 		fprintf(stderr, "[try_recv]\treceived %ld\n", res);
 		if (res < 0)
 		{
-			printf("[try_recv]\terrno: %ld\n", res);
+			printf("[try_recv]\terrno: %d\n", res);
 			perror("try_recv");
 			exit(-1);
 		}
 		else if (res == 0)
 		{
 			printf( "[try_recv]\tconnection closed.\n");
-			printf("[try_recv]\tnow pagefault total time = %ld, syscall total time = %ld\n", pgfault_time_sum, syscall_time_sum);
+			printf("[try_recv]\tnow pagefault total time = %d, syscall total time = %d\n", pgfault_time_sum, syscall_time_sum);
 			exit(0);
 		}
 		else

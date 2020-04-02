@@ -97,6 +97,9 @@ void cpu_loop(CPUARMState *env)
 
         switch (trapnr) {
         case EXCP_SWI:
+        // print_syscall(n, env->xregs[0], env->xregs[1], env->xregs[2], env->xregs[3],
+        //                           env->xregs[4], env->xregs[5]);
+        // fprintf(stderr, "\n");
         n = env->xregs[8];
         if ((n == TARGET_NR_write
                 || n == TARGET_NR_read
@@ -115,16 +118,6 @@ void cpu_loop(CPUARMState *env)
                 //|| (n == TARGET_NR_futex && env->xregs[1] != 128)
                 ) && offload_server_idx>0)
             {
-                if (0&&(n == TARGET_NR_futex)&&
-                    (env->xregs[1] & FUTEX_WAIT == FUTEX_WAIT) && 
-                    (offload_server_idx > 0))// futex wait from server, ignore
-                {
-                    fprintf(stderr, "[arm-cpu]\tI am #%ld ignoring..futex\n", offload_server_idx);
-                    ret = 0;
-                    exit(-1);
-                }
-                else
-                {              
                     fprintf(stderr, "[arm-cpu]\tI am #%ld, passing syscall to center...\n", offload_server_idx);
                     extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
                                                 abi_long arg2, abi_long arg3, abi_long arg4,
@@ -140,7 +133,6 @@ void cpu_loop(CPUARMState *env)
                                                     env->xregs[5],
                                                     0, 0);
                     fprintf(stderr, "[arm-cpu]\tpass_syscall got ret = %lp\n", ret);
-                }
             }
             else
             {

@@ -6588,6 +6588,7 @@ void *clone_func_server_local(void *arg)
     qemu_log("[clone_func_server_local]\tEntering init...\n");
 
     exec_func_init();
+    fprintf(stderr, "[clone_func_server_local]\tback to cpu loop\n");
     cpu_loop(env);
     /* never exits */
     return NULL;
@@ -7015,8 +7016,8 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, target_ulong new
                    target_ulong child_tidptr)
 {
     qemu_log("[do_fork_server_local]\tStart doing fork..\n");
-    qemu_log("[do_fork_server_local]\tenv %lp flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
-                                                env, flags, newsp, parent_tidptr, newtls, child_tidptr);
+    qemu_log("[do_fork_server_local]\tpc %lp flags %lp, newsp %lp, parent_tidptr %lp, newtls %lp, child_tidptr %lp\n",
+                                                env->pc, flags, newsp, parent_tidptr, newtls, child_tidptr);
     CPUState *cpu = ENV_GET_CPU(env);
     int ret;
     TaskState *ts;
@@ -7026,14 +7027,13 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, target_ulong new
 
     flags &= ~CLONE_IGNORED_FLAGS;
 
-    fprintf(stderr, "checkpoint1\n");
     /* Emulate vfork() with fork() */
     if (flags & CLONE_VFORK)
         flags &= ~(CLONE_VFORK | CLONE_VM);
 
-    fprintf(stderr, "checkpoint2\n");
 
-    if (flags & CLONE_VM) {
+    if (flags & CLONE_VM) 
+    {
         TaskState *parent_ts = (TaskState *)cpu->opaque;
         new_thread_info info;
         pthread_attr_t attr;
@@ -7114,7 +7114,9 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, target_ulong new
         pthread_cond_destroy(&info.cond);
         pthread_mutex_destroy(&info.mutex);
         pthread_mutex_unlock(&clone_lock);
-    } else {
+    } 
+    else 
+    {
         /* if no CLONE_VM, we consider it is a fork */
         if (flags & CLONE_INVALID_FORK_FLAGS) {
             return -TARGET_EINVAL;
@@ -7154,7 +7156,6 @@ int do_fork_server_local(CPUArchState *env, unsigned int flags, target_ulong new
             fork_end(0);
         }
     }
-    fprintf(stderr, "checkpoint2\n");
     qemu_log("[do_fork_server_local]\tReturning...\n");
     return ret;
 }

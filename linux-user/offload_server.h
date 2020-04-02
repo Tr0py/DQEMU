@@ -59,7 +59,7 @@ static void load_memory_region(void);
 void exec_func(void);
 // static void offload_server_process_futex_wait_result(void);
 static void offload_process_fork_info(void);
-static void offload_server_send_futex_wait_request(target_ulong uaddr, int op, int val, target_ulong timeout, target_ulong uaddr2, int val3);
+
 int offload_server_futex_wait(target_ulong uaddr, int op, int val, target_ulong timeout, target_ulong uaddr2, int val3);
 static void offload_server_send_page_request(target_ulong page_addr, target_ulong perm);
 int offload_segfault_handler_positive(target_ulong page_addr, int perm);
