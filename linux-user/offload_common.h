@@ -139,6 +139,6 @@ extern __thread int offload_mode;
 typedef struct PageMapDesc_server {
 	int cur_perm;
 	int is_false_sharing;
-	uint32_t shadow_page_addr;
+	target_ulong shadow_page_addr;
 } PageMapDesc_server;
 #endif

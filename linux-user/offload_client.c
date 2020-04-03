@@ -324,7 +324,7 @@ typedef struct PageMapDesc {
 } PageMapDesc;
 
 #ifdef TARGET_AARCH64
-PageMapDesc page_map_table[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE][L3_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section"))) __attribute__ ((aligned(4096))) = {0};
+PageMapDesc page_map_table[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE][L3_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section"))) = {0};
 #else
 PageMapDesc page_map_table[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section"))) __attribute__ ((aligned(4096))) = {0};
 #endif
@@ -2296,7 +2296,7 @@ static void offload_send_page_request(target_ulong idx, target_ulong page_addr, 
 	}
 	else if (res != p - net_buffer)
 	{
-		printf( "[offload_send_page_request]\tsent page %lx request shorter than expected, %d of %d\n", page_addr, res, p - net_buffer);
+		printf( "[offload_send_page_request]\tsent page %lx request shorter than expected, %d of %ld\n", page_addr, res, p - net_buffer);
 		exit(0);
 	}
 	fprintf(stderr, "[offload_send_page_request]\tsent page %lx request to node# %d, perm: %d, packet#%d\n", page_addr, idx, perm, get_number());
