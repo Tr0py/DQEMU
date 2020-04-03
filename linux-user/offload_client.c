@@ -125,7 +125,6 @@
 #define DQEMU_PAGE_FS			0x8		/* False sharing page in use. */
 #define DQEMU_PAGE_SHADOW		0x10	/* Shadow page */
 #define DQEMU_PAGE_FS_LOCK		0x16	/* A well done fs page, should never be used again. */
-#define TARGET_PAGE_SIZE PAGE_SIZE
 
 extern int offload_server_idx;
 

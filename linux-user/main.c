@@ -1236,7 +1236,8 @@ int main(int argc, char **argv, char **envp)
         fprintf(stderr, ">>>>>>>>>>>> server# %d guest_base: %x "
                         "sizeof envCPUArchState %d sizeof cpu CPUState %d\n", 
                         offload_server_idx, guest_base, sizeof(CPUArchState), sizeof(CPUState));
-		
+
+        fprintf(stderr, "target_page_size: %d\n", TARGET_PAGE_SIZE);
         /* Create daemonize thread and wait to be ready. */
         pthread_mutex_init(&main_exec_mutex, NULL);
         pthread_cond_init(&main_exec_cond, NULL);
