@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include "set.h"
+
 #define PORT_BASE 12345
 
 #define NET_BUFFER_SIZE 3000000
@@ -119,9 +121,5 @@ extern __thread int offload_mode;
 /* PAGE_SIZE / MIN_PAGE_GRAIN = MAX_PAGE_SPLIT */
 #define MIN_PAGE_GRAIN 64
 #define MAX_PAGE_SPLIT (PAGE_SIZE / MIN_PAGE_GRAIN)
-typedef struct PageMapDesc_server {
-	int cur_perm;
-	int is_false_sharing;
-	uint32_t shadow_page_addr;
-} PageMapDesc_server;
+
 #endif

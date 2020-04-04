@@ -36,6 +36,7 @@ pthread_mutex_t server_send_mutex;
 /* Init Page Info Table. */
 void offload_server_pmd_init(void)
 {
+#ifndef TARGET_AARCH64
 	int init_val;
 	/* Master has all the privilege at first. */
 	if (offload_server_idx > 0)
@@ -50,15 +51,23 @@ void offload_server_pmd_init(void)
 			//fprintf(stderr, "%ld", page_map_table[i][j].owner_set.size);
 		}
 	}
+#endif
 }
 /* Get Page info in server(slave) side. */
 inline PageMapDesc_server* get_pmd_s(target_ulong page_addr)
 {
 	page_addr = PAGE_OF(page_addr);
 	page_addr = page_addr >> MAP_PAGE_BITS;
+	
+#ifndef TARGET_AARCH64
 	int index1 = (page_addr >> L1_MAP_TABLE_SHIFT) & (L1_MAP_TABLE_SIZE - 1);
 	int index2 = page_addr & (L2_MAP_TABLE_SIZE - 1);
 	PageMapDesc_server *pmd = &page_map_table_s[index1][index2];
+#else
+	PageTable_s *element = find_page_s(page_map_table_s, page_addr, offload_server_idx);
+	PageMapDesc_server *pmd = &element->page_desc;
+	fprintf(stderr, "[get_pmd]\tpage_addr: %lx, pmd: %d\n", page_addr, pmd->cur_perm);
+#endif
 	return pmd;
 }
 /* get packet_counter of net_buffer */
@@ -739,7 +748,6 @@ void offload_send_page_request_and_wait(target_ulong page_addr, int perm)
 	}
 	if (offload_mode != 4)
 	{		
-		
 		pthread_mutex_lock(&page_recv_mutex[offload_thread_idx]);
 		//!!! Dangerous! If others have sent this and is waiting, just don not send again. But race condition could happen.
 		int have_already_requested = 0;
@@ -817,9 +825,9 @@ int offload_segfault_handler(int host_signum, siginfo_t *pinfo, void *puc)
     int is_write = ((uc->uc_mcontext.gregs[REG_ERR] & 0x2) != 0);
 	//TODO !!!!!!!!!!!!!!!DEBUG
 	//is_write = 1;
-	fprintf(stderr, "[offload_segfault_handler]\tsegfault on page addr: %lx, perm: %s\n", page_addr, is_write?"WRITE|READ":"READ");
+	fprintf(stderr, "[offload_segfault_handler]\tsegfault on page addr: %lx, perm: %s\n", page_addr, is_write ? "WRITE|READ" : "READ");
 	// sum time on pagefault
-	offload_send_page_request_and_wait(page_addr, is_write+1);
+	offload_send_page_request_and_wait(page_addr, is_write + 1);
 	//get_client_page(is_write, guest_page);
 	// send page request, sleep until content is sent back.
 	//fprintf(stderr, "[offload_segfault_handler]\t%lp value is %lp\n", guest_addr, *(target_ulong*)(g2h(guest_addr)));

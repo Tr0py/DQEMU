@@ -117,6 +117,7 @@
 #include "uname.h"
 #include "qemu.h"
 #include "offload_client.h"
+
 #define DQEMU_PAGE_BITS
 #define DQEMU_PAGE_NONE			0x0		/* NONE. READ, WRITE **in local** */
 #define DQEMU_PAGE_READ			0x1
@@ -298,31 +299,11 @@ static pthread_cond_t do_syscall_cond;
 int do_syscall_flag;
 static int is_first_do_syscall_thread;
 
-
-
-
-
-typedef struct req_node {
-	int idx;
-	int perm;
-	struct req_node *next;
-} req_node;
-
-typedef struct PageMapDesc {
-	int on_master;						/* if this page is on master side */
-	int requestor;
-	set_t owner_set;
-	pthread_mutex_t owner_set_mutex;	/* We lock the mutex when start fetching for it, until receives ack */
-	int mutex_holder;					/* Not very useful unless for debugging */
-	int invalid_count;					/* How many we should tell to invalidate */
-	int cur_perm;
-	req_node list_head; 				/* to record request list */
-	int flag;
-	target_ulong shadow_page_addr;
-	int fs_notice_count;				/* for the last time use of fs page */
-} PageMapDesc;
-
+#ifndef TARGET_AARCH64
 PageMapDesc page_map_table[L1_MAP_TABLE_SIZE][L2_MAP_TABLE_SIZE] __attribute__ ((section (".page_table_section"))) __attribute__ ((aligned(4096))) = {0};
+#else
+PageTable *page_map_table = NULL;
+#endif
 PageMapDesc *get_pmd(target_ulong page_addr);
 static int fetch_page_func(int requestor_idx, target_ulong addr, int perm);
 static target_ulong get_number(void)
@@ -380,22 +361,18 @@ void offload_client_pmd_init(void);
 
 void offload_client_pmd_init(void)
 {
-	pthread_mutexattr_t tmp;
-	/*pthread_mutexattr_init(&tmp);
-	pthread_mutexattr_settype(&tmp, PTHREAD_MUTEX_RECURSIVE);*/
-
+#ifndef TARGET_AARCH64
 	for (int i = 0; i < L1_MAP_TABLE_SIZE; i++)
 	{
 		for (int j = 0; j < L2_MAP_TABLE_SIZE; j++)
 		{
 			memset(&page_map_table[i][j], 0, sizeof(PageMapDesc));
 			pthread_mutex_init(&page_map_table[i][j].owner_set_mutex, NULL);
-			clear(&page_map_table[i][j].owner_set);
 			insert(&page_map_table[i][j].owner_set, 0);
-			
 			//fprintf(stderr, "%ld", page_map_table[i][j].owner_set.size);
 		}
 	}
+#endif
 }
 
 extern void offload_server_qemu_init(void);
@@ -419,7 +396,6 @@ void offload_connect_online_server(int idx)
 	struct sockaddr_in server_addr, client_addr;
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(server_port_of(idx));
-	fprintf(stderr, "checkpiont 2\n");
 	char* ip_addr;
 	switch (idx)
 	{
@@ -909,9 +885,15 @@ inline PageMapDesc* get_pmd(target_ulong page_addr)
 {
 	page_addr = PAGE_OF(page_addr);
 	page_addr = page_addr >> MAP_PAGE_BITS;
+#ifndef TARGET_AARCH64
 	int index1 = (page_addr >> L1_MAP_TABLE_SHIFT) & (L1_MAP_TABLE_SIZE - 1);
 	int index2 = page_addr & (L2_MAP_TABLE_SIZE - 1);
 	PageMapDesc *pmd = &page_map_table[index1][index2];
+#else
+	PageTable *entry = find_page(page_map_table, page_addr);
+	PageMapDesc *pmd = &entry->page_desc;
+	fprintf(stderr, "[get_pmd]\tpage_addr: %lx, pmd: %d\n", page_addr, pmd->cur_perm);
+#endif
 	return pmd;
 }
 
@@ -1290,7 +1272,7 @@ static void offload_process_page_request(void)
 	p = net_buffer;
 	target_ulong page_addr = *(target_ulong *) p;
 	p += sizeof(target_ulong);
-	int perm = *(target_ulong *) p;
+	target_ulong perm = *(target_ulong *) p;
 	p += sizeof(target_ulong);
 //#define MASTER_PAGE_OPTIMIZE
 #ifdef MASTER_PAGE_OPTIMIZE
@@ -1304,9 +1286,7 @@ static void offload_process_page_request(void)
 #endif
 
 	PageMapDesc *pmd = get_pmd(page_addr);
-	/*target_ulong got_flag = *(target_ulong *)p;
-	p += sizeof(target_ulong);*/
-	fprintf(stderr, "[offload_process_page_request client#%ld]\trequested address: %lx, perm: %ld\n", offload_client_idx, page_addr, perm);
+	fprintf(stderr, "[offload_process_page_request client#%ld]\trequested address: %x, perm: %ld\n", offload_client_idx, page_addr, perm);
 	fprintf(log, "%ld\t%lp\t%ld\n", offload_client_idx, page_addr, perm);
 	/* Cancle prefetch */
 	/* Cancle prefetch */
