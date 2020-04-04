@@ -5,8 +5,8 @@
 
 struct set
 {
-	unsigned element[32];
-	unsigned size;
+	uint8_t element[32];
+	uint8_t size;
 };
 
 

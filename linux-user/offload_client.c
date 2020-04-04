@@ -317,7 +317,7 @@ typedef struct PageMapDesc {
 	int invalid_count;					/* How many we should tell to invalidate */
 	int cur_perm;
 	req_node list_head; 				/* to record request list */
-	target_ulong flag;
+	int flag;
 	target_ulong shadow_page_addr;
 	int fs_notice_count;				/* for the last time use of fs page */
 } PageMapDesc;
@@ -1431,7 +1431,8 @@ void* offload_client_daemonize(void)
 	int res;
 	last_flag_recv = 1;
 	last_flag_pending = 1;
-	fprintf(stderr, ">>>>>>>>>>> client# %ld guest_base: %lx\n", offload_client_idx, guest_base);
+	fprintf(stderr, "page table entry size:%d\ttotal:%ld\n", sizeof(PageMapDesc),sizeof(PageMapDesc)<<26);
+	fprintf(stderr, ">>>>>>>>>>> client# %d guest_base: %x\n", offload_client_idx, guest_base);
 	while (1)
 	{
 		if (last_flag_recv == 1)
