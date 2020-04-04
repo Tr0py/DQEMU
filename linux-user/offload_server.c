@@ -64,9 +64,14 @@ inline PageMapDesc_server* get_pmd_s(target_ulong page_addr)
 	int index2 = page_addr & (L2_MAP_TABLE_SIZE - 1);
 	PageMapDesc_server *pmd = &page_map_table_s[index1][index2];
 #else
-	PageTable_s *element = find_page_s(page_map_table_s, page_addr, offload_server_idx);
+	PageTable_s *element = find_page_s(&page_map_table_s, page_addr, offload_server_idx);
+	if(element == NULL)
+	{
+		fprintf(stderr, "error get page info\n");
+		exit(-1);
+	}
 	PageMapDesc_server *pmd = &element->page_desc;
-	fprintf(stderr, "[get_pmd]\tpage_addr: %lx, pmd: %d\n", page_addr, pmd->cur_perm);
+	fprintf(stderr, "[get_pmd_server]\tpage_addr: %lx, pmd: %d\n", page_addr, pmd->cur_perm);
 #endif
 	return pmd;
 }
@@ -742,10 +747,11 @@ void offload_send_page_request_and_wait(target_ulong page_addr, int perm)
 	//Check if we already have the page.
 	pthread_mutex_lock(&page_process_mutex);
 	PageMapDesc_server *pmd = get_pmd_s(page_addr);
-	if (pmd->cur_perm >= perm) {
-		pthread_mutex_unlock(&page_process_mutex);
-		return;
-	}
+	// if (pmd->cur_perm >= perm) {
+	// 	pthread_mutex_unlock(&page_process_mutex);
+	// 	fprintf(stderr, "I think we have already got the page\n");
+	// 	return;
+	// }
 	if (offload_mode != 4)
 	{		
 		pthread_mutex_lock(&page_recv_mutex[offload_thread_idx]);

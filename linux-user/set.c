@@ -50,35 +50,35 @@ int find(set_t *s, int n)
 	return -1;
 }
 
-struct PageTable *find_page(PageTable *table, int page_addr)
+struct PageTable *find_page(PageTable **table, int addr)
 {
 	struct PageTable *temp = NULL;
-	HASH_FIND_INT(table, &page_addr, temp);
+	HASH_FIND_INT(*table, &addr, temp);
 	if (temp == NULL)
 	{
 		PageTable *entry = malloc(sizeof(PageTable));
 		memset(entry, 0, sizeof(PageTable));
-		entry->page_addr = page_addr;
+		entry->page_addr = addr;
 		pthread_mutex_init(&entry->page_desc.owner_set_mutex, NULL);
 		insert(&entry->page_desc.owner_set, 0);
-		add_page(table, page_addr, entry);
+		add_page(table, entry);
 		return entry;
 	}
 	return temp;
 }
 
-void add_page(PageTable *table, int page_addr, struct PageTable *p)
+void add_page(PageTable **table, struct PageTable *p)
 {
-	HASH_ADD_INT(table, page_addr, p);
+	HASH_ADD_INT(*table, page_addr, p);
 }
 
-struct PageTable_s *find_page_s(PageTable_s *table, int page_addr, int idx)
+struct PageTable_s *find_page_s(PageTable_s **table, int page_addr, int idx)
 {
 	struct PageTable *temp = NULL;
-	HASH_FIND_INT(table, &page_addr, temp);
+	HASH_FIND_INT(*table, &page_addr, temp);
 	if (temp == NULL)
 	{
-		PageTable *entry = malloc(sizeof(PageTable));
+		PageTable_s *entry = malloc(sizeof(PageTable));
 		memset(entry, 0, sizeof(PageTable));
 		entry->page_addr = page_addr;
 		if (idx == 0)
@@ -89,13 +89,13 @@ struct PageTable_s *find_page_s(PageTable_s *table, int page_addr, int idx)
 		{
 			entry->page_desc.cur_perm = 0;
 		}
-		add_page(table, page_addr, entry);
+		add_page_s(table, entry);
 		return entry;
 	}
 	return temp;
 }
 
-void add_page_s(PageTable_s *table, int page_addr, struct PageTable_s *p)
+void add_page_s(PageTable_s **table, struct PageTable_s *p)
 {
-	HASH_ADD_INT(table, page_addr, p);
+	HASH_ADD_INT(*table, page_addr, p);
 }

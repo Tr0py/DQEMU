@@ -369,7 +369,6 @@ void offload_client_pmd_init(void)
 			memset(&page_map_table[i][j], 0, sizeof(PageMapDesc));
 			pthread_mutex_init(&page_map_table[i][j].owner_set_mutex, NULL);
 			insert(&page_map_table[i][j].owner_set, 0);
-			//fprintf(stderr, "%ld", page_map_table[i][j].owner_set.size);
 		}
 	}
 #endif
@@ -750,20 +749,18 @@ static void offload_send_page_upgrade(int idx, target_ulong page_addr, int perm)
 void print_holder(target_ulong page_addr)
 {
 	PageMapDesc *pmd = get_pmd(page_addr);
-	fprintf(stderr,"[print_holder]\taddr: %lp\n",page_addr);
+	fprintf(stderr, "[print_holder]\taddr: %lp\n", page_addr);
 	for (int i = 0; i < pmd->owner_set.size; i++)
 	{
 		int idx = pmd->owner_set.element[i];
-
-		fprintf(stderr, "\tnode: %ld", idx);
-	//	if (idx != 0&&page_addr == 0xffe00000) exit(-1);
+		fprintf(stderr, "\tnode: %d", idx);
 	}
 	fprintf(stderr,"\n");
 }
 
 static int fetch_page_func(int requestor_idx, target_ulong addr, int perm)
 {
-	fprintf(stderr, "[fetch_page_func]\t addr:%lp, idx:%ld, perm:%ld\n", addr, requestor_idx, perm);
+	fprintf(stderr, "[fetch_page_func]\t addr:%lp, idx:%d, perm:%d\n", addr, requestor_idx, perm);
 	target_ulong page_addr = PAGE_OF(addr);
 	PageMapDesc *pmd = get_pmd(addr);
 	/* pmd->owner_set_mutex must be locked before. */
@@ -890,9 +887,14 @@ inline PageMapDesc* get_pmd(target_ulong page_addr)
 	int index2 = page_addr & (L2_MAP_TABLE_SIZE - 1);
 	PageMapDesc *pmd = &page_map_table[index1][index2];
 #else
-	PageTable *entry = find_page(page_map_table, page_addr);
+	PageTable *entry = find_page(&page_map_table, page_addr);
+	if(entry == NULL)
+	{
+		fprintf(stderr, "error get page info\n");
+		exit(-1);
+	}
 	PageMapDesc *pmd = &entry->page_desc;
-	fprintf(stderr, "[get_pmd]\tpage_addr: %lx, pmd: %d\n", page_addr, pmd->cur_perm);
+	fprintf(stderr, "[get_pmd_client]\tpage_addr: %lx, pmd: %d\n", page_addr, pmd->cur_perm);
 #endif
 	return pmd;
 }
@@ -926,6 +928,7 @@ static void wake_pmd_list(target_ulong page_addr)
 }
 static int process_pmd(target_ulong page_addr)
 {
+	//这里不应该有权限吗
 	PageMapDesc *pmd = get_pmd(page_addr);
 	// TODO: This is just a naive fetch. Let readers go if there are multiple readers. */
 	int ret = pthread_mutex_trylock(&pmd->owner_set_mutex);
@@ -966,7 +969,7 @@ static int process_pmd(target_ulong page_addr)
 static int offload_client_fetch_page(int requestor_idx, target_ulong addr, int perm)
 {
 
-	fprintf(stderr, "[offload_client_fetch_page]\tadding to list page address %lp, perm %ld\n", addr, perm);
+	fprintf(stderr, "[offload_client_fetch_page]\tadding to list page address %lp, perm %d\n", addr, perm);
 	/* get the PageMapDesc pointer */
 	PageMapDesc *pmd = get_pmd(addr);
 	req_node *pnode = pmd->list_head.next;
@@ -1286,14 +1289,12 @@ static void offload_process_page_request(void)
 #endif
 
 	PageMapDesc *pmd = get_pmd(page_addr);
-	fprintf(stderr, "[offload_process_page_request client#%ld]\trequested address: %x, perm: %ld\n", offload_client_idx, page_addr, perm);
-	fprintf(log, "%ld\t%lp\t%ld\n", offload_client_idx, page_addr, perm);
+	fprintf(stderr, "[offload_process_page_request client#%d]\trequested address: %lx, perm: %ld\n", offload_client_idx, page_addr, perm);
+	// fprintf(log, "%ld\t%lp\t%ld\n", offload_client_idx, page_addr, perm);
 	/* Cancle prefetch */
 	/* Cancle prefetch */
 	offload_client_fetch_page(offload_client_idx, page_addr, perm);
 	return;
-	/* Cancle prefetch */
-	/* Cancle prefetch */
 	
 	/* Check if already in prefetch list */
 	int isInPrefetch = prefetch_check(page_addr, offload_client_idx);
@@ -1914,7 +1915,7 @@ void syscall_daemonize(void)
 		target_long arg8 = syscall_p->arg8;
 		int idx = syscall_p->idx;
 		int thread_id = syscall_p->thread_id;
-		fprintf(stderr, "[syscall_daemonize]\tprocessing passed syscall from %ld->%ld, arg1: %lp, arg2:%lp, arg3:%lp\n", idx, thread_id, arg1, arg2, arg3);
+		fprintf(stderr, "[syscall_daemonize]\tprocessing passed syscall from %d->%d, arg1: %lp, arg2:%lp, arg3:%lp\n", idx, thread_id, arg1, arg2, arg3);
 		extern void print_syscall(int num,
 				target_long arg1, target_long arg2, target_long arg3,
 				target_long arg4, target_long arg5, target_long arg6);
@@ -1956,8 +1957,6 @@ void syscall_daemonize(void)
 
               The arguments uaddr2 and val3 are ignored.
 		*/
-        if(num == TARGET_NR_futex && arg2 == 64)
-            fprintf(stderr, "op == 64\n");
 		if ((num == TARGET_NR_futex)
 			&& ((arg2 == (FUTEX_PRIVATE_FLAG|FUTEX_WAIT)) || (arg2 == FUTEX_WAIT)))
 		{
@@ -2012,7 +2011,7 @@ void syscall_daemonize(void)
 				offload_segfault_handler_positive(futex_addr, 2);
 				fprintf(stderr, "checkpiont 2\n");
 				fprintf(stderr, "futex addr : %lp\n",futex_addr);
-				*(target_ulong*)g2h(futex_addr) = 0;
+				*(uint32_t*)g2h(futex_addr) = 0;
 			}
 			fprintf(stderr, "checkpiont 3\n");
 			futex_table_wake(futex_addr, wakeup_num, idx, thread_id);
@@ -2253,12 +2252,12 @@ static void offload_send_page_request(target_ulong idx, target_ulong page_addr, 
 	int res = autoSend(idx, net_buffer, p - net_buffer, 0);
 	if (res < 0)
 	{
-		printf( "[offload_send_page_request]\tpage request %lx sending to %ld failed\n", (target_ulong)g2h(page_addr), idx);
+		printf( "[offload_send_page_request]\tpage request %lx sending to %d failed\n", (target_ulong)g2h(page_addr), idx);
 		exit(0);
 	}
 	else if (res != p - net_buffer)
 	{
-		printf( "[offload_send_page_request]\tsent page %lx request shorter than expected, %ld of %ld\n", page_addr, res, p - net_buffer);
+		printf( "[offload_send_page_request]\tsent page %lx request shorter than expected, %d of %d\n", page_addr, res, p - net_buffer);
 		exit(0);
 	}
 	fprintf(stderr, "[offload_send_page_request]\tsent page %lx request to node# %ld, perm: %ld, packet#%ld\n", page_addr, idx, perm, get_number());
@@ -2549,7 +2548,6 @@ void* process_syscall_thread(void* syscall_pp)
 		fprintf(stderr,"[process_syscall_thread]\twaiting!\n");
 	}
 	struct syscall_param* syscall_p = (struct syscall_param*)syscall_pp;
-	CPUARMState* cpu_env = (CPUARMState*)syscall_p->cpu_env;
 	// int num = syscall_p->num;
 	target_long arg1 = syscall_p->arg1;
 	target_long arg2 = syscall_p->arg2;

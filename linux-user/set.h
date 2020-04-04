@@ -45,9 +45,9 @@ typedef struct PageTable
 	/* data */
 } PageTable;
 
-struct PageTable *find_page(PageTable *table, int page_addr);
+struct PageTable *find_page(PageTable **table, int page_addr);
 
-void add_page(PageTable *table, int page_addr, struct PageTable *p);
+void add_page(PageTable **table, struct PageTable *p);
 
 typedef struct PageMapDesc_server
 {
@@ -64,9 +64,9 @@ typedef struct PageTable_s
 	/* data */
 } PageTable_s;
 
-struct PageTable_s *find_page_s(PageTable_s *table, int page_addr, int idx);
+struct PageTable_s *find_page_s(PageTable_s **table, int page_addr, int idx);
 
-void add_page_s(PageTable_s *table, int page_addr, struct PageTable_s *p);
+void add_page_s(PageTable_s **table, struct PageTable_s *p);
 
 int insert(set_t *s, int t);
 
