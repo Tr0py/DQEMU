@@ -5,6 +5,8 @@
 *.d
 *.o
 
+
+thread.c
 accel/kvm/trace.c
 accel/kvm/trace.c-timestamp
 accel/kvm/trace.d

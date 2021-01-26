@@ -5,8 +5,8 @@
 
 struct set
 {
-	int element[32];
-	int size;
+	unsigned element[32];
+	unsigned size;
 };
 
 

@@ -21,6 +21,10 @@
 #include "qemu.h"
 #include "cpu_loop-common.h"
 
+// #ifndef DQEMU_DEBUG
+// #define fprintf(...) ;//offload_log
+// #endif /* DQEMU_DEBU */
+
 #define get_user_code_u32(x, gaddr, env)                \
     ({ abi_long __r = get_user_u32((x), (gaddr));       \
         if (!__r && bswap_code(arm_sctlr_b(env))) {     \
@@ -69,15 +73,23 @@
         put_user_u16(__x, (gaddr));                     \
     })
 
+extern int offload_server_idx;
+extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
+                             abi_long arg2, abi_long arg3, abi_long arg4,
+                             abi_long arg5, abi_long arg6, abi_long arg7,
+                             abi_long arg8);
+
 /* AArch64 main loop */
 void cpu_loop(CPUARMState *env)
 {
+    fprintf(stderr, "cput loop here\n");
     CPUState *cs = CPU(arm_env_get_cpu(env));
     int trapnr, sig;
     abi_long ret;
     target_siginfo_t info;
-
-    for (;;) {
+    int n;
+    for (;;)
+    {
         cpu_exec_start(cs);
         trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
@@ -85,15 +97,60 @@ void cpu_loop(CPUARMState *env)
 
         switch (trapnr) {
         case EXCP_SWI:
-            ret = do_syscall(env,
-                             env->xregs[8],
-                             env->xregs[0],
-                             env->xregs[1],
-                             env->xregs[2],
-                             env->xregs[3],
-                             env->xregs[4],
-                             env->xregs[5],
-                             0, 0);
+        // print_syscall(n, env->xregs[0], env->xregs[1], env->xregs[2], env->xregs[3],
+        //                           env->xregs[4], env->xregs[5]);
+        // fprintf(stderr, "\n");
+        n = env->xregs[8];
+        if ((n == TARGET_NR_write
+                || n == TARGET_NR_read
+                || n == TARGET_NR_openat
+                || n == TARGET_NR_fstat
+                || n == TARGET_NR_close
+                || n == TARGET_NR_futex
+                || n == TARGET_NR_clock_gettime
+                || n == TARGET_NR_writev
+                || n == TARGET_NR_brk
+                || n == TARGET_NR_mprotect
+                || n == TARGET_NR_madvise
+                || n == TARGET_NR_mprotect
+                || n == TARGET_NR_munmap
+                || n == TARGET_NR_clone
+                //|| (n == TARGET_NR_futex && env->xregs[1] != 128)
+                ) && offload_server_idx>0)
+            {
+                    fprintf(stderr, "[arm-cpu]\tI am #%ld, passing syscall to center...\n", offload_server_idx);
+                    extern abi_long pass_syscall(void *cpu_env, int num, abi_long arg1,
+                                                abi_long arg2, abi_long arg3, abi_long arg4,
+                                                abi_long arg5, abi_long arg6, abi_long arg7,
+                                                abi_long arg8);
+                    ret = (abi_ulong)pass_syscall(env,
+                                                    n,
+                                                    env->xregs[0],
+                                                    env->xregs[1],
+                                                    env->xregs[2],
+                                                    env->xregs[3],
+                                                    env->xregs[4],
+                                                    env->xregs[5],
+                                                    0, 0);
+                    fprintf(stderr, "[arm-cpu]\tpass_syscall got ret = %lp\n", ret);
+            }
+            else
+            {
+                //extern static pthread_mutex_t offload_center_clone_mutex;
+                //pthread_mutex_lock(&offload_center_clone_mutex);
+                //pthread_mutex_unlock(&offload_center_clone_mutex);
+                ret = do_syscall(env,
+                                n,
+                                env->xregs[0],
+                                env->xregs[1],
+                                env->xregs[2],
+                                env->xregs[3],
+                                env->xregs[4],
+                                env->xregs[5],
+                                0, 0);
+                fprintf(stderr, "[arm-cpu]\tdo_syscall got ret = %lp\n", ret);
+                //assert((unsigned int)ret >= 0xfffff001u);
+            }
             if (ret == -TARGET_ERESTARTSYS) {
                 env->pc -= 4;
             } else if (ret != -TARGET_QEMU_ESIGRETURN) {
@@ -101,9 +158,11 @@ void cpu_loop(CPUARMState *env)
             }
             break;
         case EXCP_INTERRUPT:
+            fprintf(stderr, "[arm-cpu]\tEXCP_INTERRUPT\n");
             /* just indicate that signals should be handled asap */
             break;
         case EXCP_UDEF:
+            fprintf(stderr, "[arm-cpu]\tEXCP_UDEF\n");
             info.si_signo = TARGET_SIGILL;
             info.si_errno = 0;
             info.si_code = TARGET_ILL_ILLOPN;
@@ -112,6 +171,7 @@ void cpu_loop(CPUARMState *env)
             break;
         case EXCP_PREFETCH_ABORT:
         case EXCP_DATA_ABORT:
+            fprintf(stderr, "[arm-cpu]\tEXCP_DATA_ABORT\n");
             info.si_signo = TARGET_SIGSEGV;
             info.si_errno = 0;
             /* XXX: check env->error_code */
@@ -121,6 +181,7 @@ void cpu_loop(CPUARMState *env)
             break;
         case EXCP_DEBUG:
         case EXCP_BKPT:
+            fprintf(stderr, "[arm-cpu]\tEXCP_DEBUG\n");
             sig = gdb_handlesig(cs, TARGET_SIGTRAP);
             if (sig) {
                 info.si_signo = sig;
@@ -130,16 +191,18 @@ void cpu_loop(CPUARMState *env)
             }
             break;
         case EXCP_SEMIHOST:
+            fprintf(stderr, "[arm-cpu]\tEXCP_SEMIHOST\n");
             env->xregs[0] = do_arm_semihosting(env);
             break;
         case EXCP_YIELD:
+            fprintf(stderr, "[arm-cpu]\tEXCP_YIELD\n");
             /* nothing to do here for user-mode, just resume guest code */
             break;
         case EXCP_ATOMIC:
             cpu_exec_step_atomic(cs);
             break;
         default:
-            EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%x - aborting\n", trapnr);
+            EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%lx - aborting\n", trapnr);
             abort();
         }
         process_pending_signals(env);

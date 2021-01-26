@@ -45,29 +45,53 @@ void offload_log(FILE *f, const char *c, ...)
 	int timeSec = t.time % 60;
 	t.time /= 60;
 	int timeMin = t.time % 60;
+	// if (offload_mode == 1)
+	// {
+	// 	sprintf(tmp, PRTCTRL_RED "[server #%d]%d:%d:%d\t", offload_server_idx, timeMin, timeSec, t.millitm);
+	// }
+	// else if (offload_mode == 2)
+	// {
+	// 	sprintf(tmp, PRTCTRL_GREEN "[client #%d]%d:%d:%d\t", offload_client_idx, timeMin, timeSec, t.millitm);
+	// }
+	// else if (offload_mode == 3)
+	// {
+	// 	sprintf(tmp, PRTCTRL_YELLO "[exec #%d->%d]%d:%d:%d\t", offload_server_idx, offload_thread_idx, timeMin, timeSec, t.millitm);
+	// }
+	// else if (offload_mode == 4)
+	// {
+	// 	sprintf(tmp, PRTCTRL_BLUE "[syscall #%d]%d:%d:%d\t", offload_client_idx, timeMin, timeSec, t.millitm);
+	// }
+	// else if (offload_mode == 5)
+	// {
+	// 	sprintf(tmp, PRTCTRL_CYN "[client thread #%d]%d:%d:%d\t", offload_client_idx, timeMin, timeSec, t.millitm);
+	// }
+	// else if (offload_mode == 6)
+	// {
+	// 	sprintf(tmp, PRTCTRL_PURPLE "[exec #%d->%d]%d:%d:%d\t", offload_server_idx, offload_thread_idx, timeMin, timeSec, t.millitm);
+	// }
 	if (offload_mode == 1)
 	{
-		sprintf(tmp, PRTCTRL_RED "[server #%d]%d:%d:%d\t", offload_server_idx, timeMin, timeSec, t.millitm);
+		sprintf(tmp, PRTCTRL_RED "[server #%d]\t", offload_server_idx);
 	}
 	else if (offload_mode == 2)
 	{
-		sprintf(tmp, PRTCTRL_GREEN "[client #%d]%d:%d:%d\t", offload_client_idx, timeMin, timeSec, t.millitm);
+		sprintf(tmp, PRTCTRL_GREEN "[client #%d]\t", offload_client_idx);
 	}
 	else if (offload_mode == 3)
 	{
-		sprintf(tmp, PRTCTRL_YELLO "[exec #%d->%d]%d:%d:%d\t", offload_server_idx, offload_thread_idx, timeMin, timeSec, t.millitm);
+		sprintf(tmp, PRTCTRL_YELLO "[exec #%d->%d]\t", offload_server_idx, offload_thread_idx);
 	}
 	else if (offload_mode == 4)
 	{
-		sprintf(tmp, PRTCTRL_BLUE "[syscall #%d]%d:%d:%d\t", offload_client_idx, timeMin, timeSec, t.millitm);
+		sprintf(tmp, PRTCTRL_BLUE "[syscall #%d]\t", offload_client_idx);
 	}
 	else if (offload_mode == 5)
 	{
-		sprintf(tmp, PRTCTRL_CYN "[client thread #%d]%d:%d:%d\t", offload_client_idx, timeMin, timeSec, t.millitm);
+		sprintf(tmp, PRTCTRL_CYN "[client thread #%d]\t", offload_client_idx);
 	}
 	else if (offload_mode == 6)
 	{
-		sprintf(tmp, PRTCTRL_PURPLE "[exec #%d->%d]%d:%d:%d\t", offload_server_idx, offload_thread_idx, timeMin, timeSec, t.millitm);
+		sprintf(tmp, PRTCTRL_PURPLE "[exec #%d->%d]\t", offload_server_idx, offload_thread_idx);
 	}
 	strcat(tmp, c);
 	strcat(tmp, PRTCTRL_NONE);
